@@ -1,0 +1,195 @@
+/* ==========================================================================
+   Agent 循环图解 · 页面自有样式
+   --------------------------------------------------------------------------
+   只允许 .ag- 类名。指标卡、条形图、流程块、判断条在 shared/walk-shell.css 里
+   （.wk-* 前缀），这里不重复定义。
+
+   本文件只留这个图解独有的画法：对话气泡、思考块、工具调用代码块、检索召回卡。
+   ========================================================================== */
+
+:root {
+  /* 高亮色换成紫，和 Transformer 页的墨绿区分开 —— 共享层只认这一个变量 */
+  --wk-hit: #6d28d9;
+  --wk-hit-soft: #f2ecfe;
+  --wk-hit-ink: #4c1d95;
+
+  --ag-ink: #14161b;
+  --ag-muted: #6b7280;
+  --ag-line: #e6e9ef;
+  --ag-soft: #f7f8fb;
+  --ag-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---------------------------------------------------------- 对话气泡 */
+
+.ag-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--ag-soft);
+  border-radius: 14px;
+  border-left: 2px solid var(--wk-accent);
+}
+
+.ag-bubble.is-answer {
+  border-left-color: var(--wk-hit);
+  background: var(--wk-hit-soft);
+}
+
+.ag-bubble-role {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ag-muted);
+  padding-top: 2px;
+  white-space: nowrap;
+}
+
+.ag-bubble-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ag-ink);
+}
+
+.ag-bubble.is-answer .ag-bubble-text { font-size: 13.5px; }
+
+/* ------------------------------------------------------------ 思考块
+   用虚线边框 + 斜体，和「确定的输出」（代码块、回答）区分开：
+   思考是过程，不是结论。                                                 */
+
+.ag-thought {
+  padding: 12px 14px;
+  border: 1px dashed #cdd3e0;
+  border-radius: 11px;
+  background: #fbfcfe;
+}
+
+.ag-thought-tag {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #8b93a5;
+  margin-bottom: 6px;
+}
+
+.ag-thought p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #4a5160;
+  font-style: italic;
+}
+
+/* -------------------------------------------------------- 工具调用代码 */
+
+.ag-code {
+  margin: 0;
+  padding: 12px 14px;
+  background: #f6f7fa;
+  border: 1px solid var(--ag-line);
+  border-radius: 11px;
+  font-family: var(--ag-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: #2b303b;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.ag-code.is-tall {
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+/* -------------------------------------------------------- 检索召回卡 */
+
+.ag-chunks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ag-chunk {
+  padding: 9px 12px 10px;
+  border: 1px solid var(--ag-line);
+  border-radius: 10px;
+  background: #fff;
+  opacity: .62;
+}
+
+/* 只有前两段真正回答了问题，用高亮标出来；其余压暗表示「召回了但没用上」 */
+.ag-chunk.is-kept {
+  opacity: 1;
+  border-color: var(--wk-hit);
+  background: var(--wk-hit-soft);
+}
+
+.ag-chunk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.ag-chunk-rank {
+  font-family: var(--ag-mono);
+  font-size: 10px;
+  color: var(--ag-muted);
+  flex: 0 0 auto;
+}
+
+.ag-chunk-head b {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ag-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-chunk-score {
+  flex: 0 0 auto;
+  font-family: var(--ag-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-hit);
+  font-weight: 500;
+}
+
+.ag-chunk-bar {
+  display: block;
+  height: 3px;
+  background: #edeff4;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.ag-chunk-bar i {
+  display: block;
+  height: 100%;
+  background: var(--wk-hit);
+  border-radius: 2px;
+}
+
+.ag-chunk-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #5c6372;
+}
+
+/* -------------------------------------------------------------- 响应式 */
+
+@media (max-width: 560px) {
+  :root { --wk-bar-label-w: 92px; }
+  .ag-bubble-text { font-size: 13.5px; }
+  .ag-code { font-size: 11px; }
+  .ag-chunk-head b { font-size: 11.5px; }
+}

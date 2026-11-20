@@ -17,6 +17,7 @@
   const HELP_SOURCE_ID = 'gh-help-source';
   const BAR_ID = 'gh-bar';
   const OVERLAY_MESSAGE = 'game-hub:overlay';
+  const ESCAPE_MESSAGE = 'game-hub:escape';
 
   const shell = {
     title: '',
@@ -24,6 +25,8 @@
     helpBody: null,
     lastFocus: null,
     helpButton: null,
+    // 页面自己要用 Esc 时，在 #gh-bar 上写 data-esc="local" 把它留下来
+    escapeLocal: false,
   };
 
   /** 处于 iframe 中时，返回大厅由大厅顶栏负责，游戏内不应重复提供入口。 */
@@ -99,6 +102,23 @@
     return modal;
   }
 
+  /**
+   * 把 Esc 转发给大厅，让大厅关闭当前内容。
+   *
+   * 为什么必须显式转发：大厅打开内容时会 focus iframe，此后焦点在 iframe 内部，
+   * 按键事件只在这一层 document 上冒泡，永远到不了父窗口的 document。
+   * 也就是说「再按一次 Esc 返回大厅」这句写在文档里的行为，不做转发是根本不成立的
+   * ——第一版就是这样，Esc 在内容页里完全没反应。
+   */
+  function notifyParentEscape() {
+    if (!inIframe()) return;
+    try {
+      window.parent.postMessage({ type: ESCAPE_MESSAGE }, window.location.origin);
+    } catch (error) {
+      // 父窗口不可达就算了，用户还能点「← 返回大厅」。
+    }
+  }
+
   /** 通知父窗口（大厅）当前是否有覆盖层，避免 Esc 被两边同时响应。 */
   function notifyParent(isOpen) {
     if (!inIframe()) return;
@@ -156,7 +176,12 @@
    * 用户按一下 Esc 想关帮助，结果同时把游戏也暂停了。
    */
   function onKeydown(event) {
-    if (!shell.modal || shell.modal.hidden) return;
+    if (!shell.modal || shell.modal.hidden) {
+      // 弹层没开：Esc 的意思就是「退出当前内容」，转发给大厅。
+      if (event.key === 'Escape' && !shell.escapeLocal) notifyParentEscape();
+      return;
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
@@ -198,6 +223,7 @@
     if (bar.dataset.ghReady === '1') return;
 
     shell.title = bar.dataset.title || document.title;
+    shell.escapeLocal = bar.dataset.esc === 'local';
 
     const back = el('a', 'gh-link', '← 返回大厅');
     back.href = '../../index.html';
@@ -263,6 +289,10 @@
   window.GameShell = {
     inIframe,
     isHelpOpen,
+    /** 页面想自己处理 Esc 时调它，之后 Esc 不再转发给大厅。 */
+    reserveEscape() {
+      shell.escapeLocal = true;
+    },
     openHelp,
     closeHelp,
     store,

@@ -48,6 +48,13 @@ body{
   font-size:14px;
 }
 
+/* 正文里强调「游戏 / 图解」两个词时只提权重，不改色——
+   颜色留给徽标，避免同一页面出现两套类型编码。 */
+.top p strong{
+  font-weight:500;
+  color:var(--ink);
+}
+
 #lobby{
   max-width:960px;
   margin:0 auto;
@@ -190,6 +197,32 @@ body{
   font-size:12px;
   color:var(--muted);
   font-variant-numeric:tabular-nums;
+}
+
+/* 标题行：名字 + 类型徽标。徽标是必要的——两种产物在卡片上长得一样，
+   不标出来读者点进去才发现「这不是游戏」，产生的是预期错位。 */
+.title-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.kind{
+  font-size:10px;
+  line-height:1;
+  letter-spacing:.04em;
+  padding:3px 6px;
+  border-radius:5px;
+  border:1px solid var(--line);
+  color:var(--muted);
+  background:var(--bg);
+}
+
+.kind.is-walk{
+  background:#f2ecfe;
+  border-color:#dfd3fb;
+  color:#6d28d9;
 }
 
 .notice{

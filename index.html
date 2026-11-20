@@ -3,27 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>游戏大厅</title>
+<title>机制图解与推理游戏</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bfd'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E">
-<meta name="description" content="纯静态的网页游戏大厅：一个 games.json 清单，一个 iframe 装一个游戏。">
+<meta name="description" content="纯静态的机制大厅：游戏让你输一次，图解让你看清每一步。">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <header class="top">
-  <span class="eyebrow">GAME HUB · 用游戏学推理与 Agent</span>
-  <h1>游戏大厅</h1>
-  <p>每个游戏讲清一个机制，玩完能指着数字说出自己输在哪。</p>
+  <span class="eyebrow">GAME HUB · 用游戏与图解学推理和 Agent</span>
+  <h1>机制大厅</h1>
+  <p>两种形态：<strong>游戏</strong>有输赢，玩完能指着数字说出自己输在哪；<strong>图解</strong>没有输赢，能一步步看清机制怎么跑、参数怎么改变结果。</p>
 </header>
 
 <main id="lobby">
-  <nav class="tabs" id="tabs" role="tablist" aria-label="游戏分类"></nav>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="内容分类"></nav>
   <div class="controls">
-    <label for="search">查找游戏</label>
-    <input id="search" type="search" placeholder="输入游戏名称或 id" autocomplete="off">
-    <span id="status" role="status">正在读取游戏…</span>
+    <label for="search">查找</label>
+    <input id="search" type="search" placeholder="输入名称或 id" autocomplete="off">
+    <span id="status" role="status">正在读取清单…</span>
   </div>
-  <section id="games" class="grid" aria-label="游戏列表"></section>
-  <p id="empty" class="notice" hidden>没有找到匹配的游戏。</p>
+  <section id="games" class="grid" aria-label="内容列表"></section>
+  <p id="empty" class="notice" hidden>没有找到匹配的条目。</p>
 </main>
 
 <section id="player" hidden>
@@ -33,10 +33,10 @@
     <a id="doclink" target="_blank" rel="noopener" hidden>设计文档 ↗</a>
     <a id="newtab" target="_blank" rel="noopener">在新标签页打开 ↗</a>
   </div>
-  <iframe id="frame" title="游戏内容" allow="fullscreen"></iframe>
+  <iframe id="frame" title="内容" allow="fullscreen"></iframe>
 </section>
 
-<noscript><p class="notice">这个大厅靠 JavaScript 读取游戏清单，请打开脚本后再看。</p></noscript>
+<noscript><p class="notice">这个大厅靠 JavaScript 读取清单，请打开脚本后再看。</p></noscript>
 
 <script type="module" src="./client.js"></script>
 </body>

@@ -20,6 +20,14 @@ let categories = [];
 let active = 'all';
 let repo = '';
 
+/** 目录前缀、卡片徽标、计数都要用到，抽出来避免三处各判一次。 */
+const KIND_DIR = { game: 'games', walk: 'walks' };
+const KIND_LABEL = { game: '游戏', walk: '图解' };
+
+function kindOf(entry) {
+  return entry && entry.kind === 'walk' ? 'walk' : 'game';
+}
+
 // 游戏内的帮助弹层是覆盖层，用户按 Esc 的本意多半是「关掉弹层」。
 // 游戏会通过 postMessage 告知覆盖层状态，这里据此让 Esc 只做一件事。
 let overlayOpen = false;
@@ -33,6 +41,15 @@ function colorOf(id) {
 function countOf(categoryId) {
   if (categoryId === 'all') return games.length;
   return games.filter((g) => g.category === categoryId).length;
+}
+
+/** 状态栏用：这一分类下分别是几个游戏、几个图解。 */
+function kindBreakdown(categoryId) {
+  const list = categoryId === 'all'
+    ? games
+    : games.filter((g) => g.category === categoryId);
+  const walk = list.filter((g) => kindOf(g) === 'walk').length;
+  return { walk, game: list.length - walk };
 }
 
 function categoryName(categoryId) {
@@ -55,12 +72,21 @@ function makeCard(g) {
   const name = document.createElement('strong');
   name.textContent = g.name;
 
+  const kind = kindOf(g);
+  const badge = document.createElement('span');
+  badge.className = 'kind is-' + kind;
+  badge.textContent = KIND_LABEL[kind];
+
+  const titleLine = document.createElement('span');
+  titleLine.className = 'title-line';
+  titleLine.append(name, badge);
+
   const meta = document.createElement('span');
   meta.className = 'meta';
   const tag = g.category ? categoryName(g.category) : '';
   meta.textContent = (tag ? tag + ' · ' : '') + `v${g.version} · 资源 #${g.contentCode}`;
 
-  btn.append(avatar, name, meta);
+  btn.append(avatar, titleLine, meta);
   btn.addEventListener('click', () => openGame(g));
   return btn;
 }
@@ -118,18 +144,24 @@ function render() {
   const total = countOf(active);
   emptyEl.hidden = list.length > 0;
   if (!list.length) {
-    if (!games.length) emptyEl.textContent = '游戏清单是空的。';
-    else if (q) emptyEl.textContent = '没有找到匹配的游戏。';
-    else emptyEl.textContent = `${categoryName(active)} 分类还没有游戏，正在做。`;
+    if (!games.length) emptyEl.textContent = '清单是空的。';
+    else if (q) emptyEl.textContent = '没有找到匹配的条目。';
+    else emptyEl.textContent = `${categoryName(active)} 分类里还没有内容，正在做。`;
   }
 
+  const parts = kindBreakdown(active);
+  const detail = total === 0
+    ? ''
+    : `（${parts.game} 游戏 · ${parts.walk} 图解）`;
+
   statusEl.textContent = q && list.length !== total
-    ? `${list.length} / ${total} 个游戏`
-    : `${total} 个游戏`;
+    ? `${list.length} / ${total} 个条目`
+    : `${total} 个条目${detail}`;
 }
 
 function openGame(g) {
-  const url = new URL(`./games/${g.id}/${g.entry}`, location.href);
+  const dir = KIND_DIR[kindOf(g)];
+  const url = new URL(`./${dir}/${g.id}/${g.entry}`, location.href);
   frame.src = url.href;
   newtab.href = url.href;
   titleEl.textContent = g.name;
@@ -167,7 +199,16 @@ window.addEventListener('message', (event) => {
   // 只接受当前 iframe 自己发来的消息，避免同源的其他窗口误触发。
   if (event.origin !== location.origin) return;
   if (event.source !== frame.contentWindow) return;
-  if (!event.data || event.data.type !== 'game-hub:overlay') return;
+  if (!event.data) return;
+
+  // 内容页把 Esc 转发上来：弹层没开时，Esc 的含义是「退出当前内容」。
+  // 必须在内容页侧转发——大厅打开内容后焦点在 iframe 里，拿不到这个按键。
+  if (event.data.type === 'game-hub:escape') {
+    if (!overlayOpen) closeGame();
+    return;
+  }
+
+  if (event.data.type !== 'game-hub:overlay') return;
   overlayOpen = Boolean(event.data.open);
 });
 

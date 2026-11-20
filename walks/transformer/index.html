@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transformer 全流程</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/game-shell.css">
+<link rel="stylesheet" href="../../shared/walk-shell.css">
+<link rel="stylesheet" href="./walk.css">
+</head>
+<body>
+
+<header id="gh-bar" data-title="Transformer 全流程"></header>
+
+<main></main>
+
+<div id="gh-help-source" hidden>
+  <h3>这条链路在讲什么</h3>
+  <p>一段文字变成下一个字，中间要经过十几道工序。大多数讲解只挑其中一道讲透，结果是每道工序都懂一点，却说不清它们怎么串起来、哪一道最贵。</p>
+  <p>这个图解把整条链路摊成 <strong>12 步</strong>，顶部常驻的流程图告诉你在哪一步。你可以来回翻，也可以拧参数——每一步的画面会跟着变。</p>
+
+  <h3>你能看出什么</h3>
+  <ul>
+    <li>分词粒度从子词改成单字，序列长度立刻翻倍，而注意力是 <strong>O(n²)</strong>——计算量的代价是平方级的。</li>
+    <li>关掉位置编码，<strong>「猫追狗」和「狗追猫」在模型眼里变成同一个东西</strong>。这是「为什么需要位置编码」最短的证明。</li>
+    <li>温度不改变候选的顺序，只改变它们的<strong>相对差距</strong>；top-k 砍尾巴，top-p 按累计概率砍——三个旋钮干的是三件不同的事。</li>
+    <li>prefill 一次前向吃下整段提示词，decode 每个 token 一次前向。没有 KV cache 的话，总计算量是<strong>平方级</strong>的。</li>
+    <li>投机解码的加速比不是「越大越好」——k 大了，后面的猜测命中率是指数衰减的。</li>
+  </ul>
+
+  <h3>怎么操作</h3>
+  <ol>
+    <li>点顶部流程图里的任意一步，直接跳过去；或者用下方的「上一步 / 下一步」，也可以按键盘 ← →。</li>
+    <li>每一步下方的「调一调」是这一步真正起作用的那几个参数。拖一下，画面立刻重画。</li>
+    <li>参数会被记住（下次打开还在），不会因为翻页而重置——这样才能对比「同一个参数在不同步骤里的作用」。</li>
+  </ol>
+
+  <h3>每一步在算什么</h3>
+  <ul>
+    <li><strong>提示词 → 分词 → 嵌入</strong>：文字先变成 id，再变成向量。模型从头到尾没见过「字」。</li>
+    <li><strong>注意力 → 归一化 → 前馈 → 层堆叠</strong>：这是主干，重复 N 层。注意力负责让 token 之间交换信息，前馈负责逐个 token 做变换。</li>
+    <li><strong>输出头 → 采样</strong>：最后一层的向量乘上词表矩阵，得到 12 万个分数，softmax 成概率，再按策略挑一个。</li>
+    <li><strong>prefill → decode → KV cache → 投机解码</strong>：决定「快不快」的四步，和「准不准」无关。</li>
+  </ul>
+
+  <h3>想深一点</h3>
+  <p>把温度拖到 0 和拖到 2，候选的顺序变了吗？如果没有，那「温度让模型更聪明」这句话错在哪一步？</p>
+</div>
+
+<script src="../../shared/game-shell.js"></script>
+<script src="../../shared/walk-shell.js"></script>
+<script src="./walk.js"></script>
+</body>
+</html>

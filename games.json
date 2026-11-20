@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "repo": "dengbanshi/game-hub",
   "categories": [
     {
@@ -17,8 +17,29 @@
   ],
   "games": [
     {
+      "id": "transformer",
+      "name": "Transformer 全流程",
+      "kind": "walk",
+      "category": "inference",
+      "version": "1.0.0",
+      "contentCode": 1,
+      "entry": "index.html",
+      "doc": "doc/walks/transformer.md"
+    },
+    {
+      "id": "agent-loop",
+      "name": "Agent 经典循环",
+      "kind": "walk",
+      "category": "agent",
+      "version": "1.0.0",
+      "contentCode": 1,
+      "entry": "index.html",
+      "doc": "doc/walks/agent-loop.md"
+    },
+    {
       "id": "speculative",
       "name": "投机采样",
+      "kind": "game",
       "category": "inference",
       "version": "1.1.0",
       "contentCode": 1,
@@ -28,6 +49,7 @@
     {
       "id": "context-window",
       "name": "上下文窗口",
+      "kind": "game",
       "category": "agent",
       "version": "1.1.0",
       "contentCode": 1,
@@ -37,6 +59,7 @@
     {
       "id": "g2048",
       "name": "2048",
+      "kind": "game",
       "category": "game",
       "version": "1.1.0",
       "contentCode": 1,
@@ -46,6 +69,7 @@
     {
       "id": "snake",
       "name": "贪吃蛇",
+      "kind": "game",
       "category": "game",
       "version": "1.1.0",
       "contentCode": 1,

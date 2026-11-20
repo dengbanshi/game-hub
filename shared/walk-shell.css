@@ -1,0 +1,626 @@
+/* ==========================================================================
+   walk-shell.css —— 图解页外壳样式
+   --------------------------------------------------------------------------
+   约束：本文件只允许 .wk- 前缀的类名和 --wk- 前缀的变量。
+   和 game-shell 一样，共享层一旦写裸元素选择器，就会和图解页自己的绘制样式踩踏。
+
+   视觉基线沿用游戏侧：白底、1px 淡边框、圆角 12~16、强调色 #3b5bfd。
+   两处细节是刻意的：
+     · 当前步骤用「实心方块 + 加粗文字」标记，不只靠颜色
+     · 参数读数用等宽数字，拖动滑块时不抖
+   ========================================================================== */
+
+:root {
+  --wk-accent: #3b5bfd;
+  --wk-accent-soft: #eef1ff;
+  --wk-line: #e3e6ec;
+  --wk-line-soft: #eef0f4;
+  --wk-ink: #14161b;
+  --wk-muted: #6b7280;
+  --wk-soft: #f6f7fa;
+  --wk-radius: 14px;
+}
+
+.wk {
+  box-sizing: border-box;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px 56px;
+  font-family: var(--gh-font, system-ui, -apple-system, "Segoe UI", "PingFang SC", sans-serif);
+  color: var(--wk-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ 页头 */
+
+.wk-head { margin-bottom: 18px; }
+
+.wk-kicker {
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--wk-muted);
+  margin-bottom: 8px;
+}
+
+.wk-title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.wk-lede {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #4a5160;
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* -------------------------------------------------------------- 流程图 */
+
+.wk-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--wk-soft);
+  border-radius: var(--wk-radius);
+}
+
+.wk-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.wk-group-name {
+  flex: 0 0 52px;
+  padding-top: 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--wk-muted);
+  letter-spacing: .04em;
+}
+
+.wk-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wk-arrow {
+  font-size: 11px;
+  color: #b6bcc8;
+  padding: 0 1px;
+}
+
+.wk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #4a5160;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease, border-color .14s ease;
+}
+
+.wk-chip:hover {
+  background: #fff;
+  border-color: var(--wk-line);
+  color: var(--wk-ink);
+}
+
+.wk-chip:focus-visible {
+  outline: 2px solid var(--wk-accent);
+  outline-offset: 1px;
+}
+
+.wk-chip-no {
+  font-style: normal;
+  font-family: var(--gh-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: #a3aab8;
+  letter-spacing: .02em;
+}
+
+/* 走过的步骤：编号变实心块，表示「已看过」 */
+.wk-chip.is-done .wk-chip-no {
+  color: #fff;
+  background: #b9c0cc;
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+
+.wk-chip.is-active {
+  background: var(--wk-accent);
+  border-color: var(--wk-accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.wk-chip.is-active .wk-chip-no {
+  color: #fff;
+  background: rgba(255, 255, 255, .26);
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+
+.wk-chip.is-active:hover {
+  background: var(--wk-accent);
+  border-color: var(--wk-accent);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- 卡片 */
+
+.wk-card {
+  background: #fff;
+  border: 1px solid var(--wk-line);
+  border-radius: var(--wk-radius);
+  padding: 18px 20px 20px;
+  margin-bottom: 14px;
+}
+
+.wk-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--wk-line-soft);
+  margin-bottom: 16px;
+}
+
+.wk-stepno {
+  flex: 0 0 auto;
+  font-family: var(--gh-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: var(--wk-accent-soft);
+  color: var(--wk-accent);
+  font-weight: 500;
+}
+
+.wk-title-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wk-step-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.wk-caption {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--wk-muted);
+  margin: 0;
+}
+
+/* 画布给一个下限，避免步骤之间高度差太大导致页面上下跳。
+   210px 是量出来的：最矮的一步（提示词）约 190px，最高的（注意力矩阵 / 采样）约 420px，
+   取一个偏小的值，宁可让高的一步自己撑开，也不要在矮的一步里留一大片空白。 */
+.wk-stage {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wk-error {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #a32d2d;
+  background: #fcebeb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------ 画布原语
+   指标卡 / 条形图 / 流程块 / 判断条。两个图解都用这几样，所以样式必须在共享层——
+   否则同一个条形图在一个页面是 8px 圆角、另一个是直角，读者会以为含义不同。
+   页面想换「高亮色」只改 --wk-hit，不要改这里的类。                             */
+
+:root {
+  --wk-hit: #0f766e;
+  --wk-hit-soft: #e6f4f1;
+  --wk-hit-ink: #14453f;
+  --wk-bar-label-w: 86px;
+  --wk-bar-value-w: 74px;
+}
+
+.wk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
+}
+
+.wk-stat {
+  background: var(--wk-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.wk-stat-label {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--wk-muted);
+  margin-bottom: 4px;
+}
+
+.wk-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-ink);
+  letter-spacing: -.01em;
+}
+
+.wk-stat.is-strong .wk-stat-value { color: var(--wk-hit); }
+.wk-stat.is-warn .wk-stat-value { color: #b45309; }
+
+.wk-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wk-bar {
+  display: grid;
+  grid-template-columns: var(--wk-bar-label-w) 1fr var(--wk-bar-value-w);
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.wk-bar-label {
+  color: var(--wk-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wk-bar-track {
+  height: 9px;
+  background: #eef0f4;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.wk-bar-track i {
+  display: block;
+  height: 100%;
+  background: var(--wk-accent);
+  border-radius: 5px;
+  transition: width .12s ease;
+}
+
+.wk-bar-value {
+  font-family: var(--gh-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-muted);
+  text-align: right;
+}
+
+/* 被剔除的那一条：压暗 + 删除线，不只靠颜色传递「它没被选中」 */
+.wk-bar.is-dim { opacity: .42; }
+.wk-bar.is-dim .wk-bar-label { text-decoration: line-through; }
+.wk-bar.is-dim .wk-bar-track i { background: #b6bcc8; }
+
+.wk-bar.is-hit .wk-bar-label { font-weight: 500; }
+.wk-bar.is-hit .wk-bar-track i { background: var(--wk-hit); }
+.wk-bar.is-hit .wk-bar-value { color: var(--wk-hit); }
+
+.wk-note {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--wk-line-soft);
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #5c6372;
+}
+
+.wk-sublabel {
+  margin: 0 0 -6px;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--wk-muted);
+}
+
+.wk-flowrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wk-flowbox {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--wk-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.wk-flowbox b {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wk-ink);
+  line-height: 1.3;
+}
+
+.wk-flowbox span {
+  font-size: 10.5px;
+  color: var(--wk-muted);
+  line-height: 1.4;
+}
+
+.wk-flowbox.is-accent {
+  border-color: var(--wk-hit);
+  background: var(--wk-hit-soft);
+}
+
+.wk-flowbox.is-accent b { color: var(--wk-hit); }
+
+.wk-flowarrow {
+  font-size: 12px;
+  color: #b6bcc8;
+}
+
+.wk-verdict {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  background: var(--wk-soft);
+  border-left: 2px solid #c9cfdb;
+  color: #3c4350;
+}
+
+.wk-verdict.is-ok {
+  background: var(--wk-hit-soft);
+  border-left-color: var(--wk-hit);
+  color: var(--wk-hit-ink);
+}
+
+.wk-verdict.is-bad {
+  background: #fcebeb;
+  border-left-color: #b91c1c;
+  color: #7a1f1f;
+}
+
+/* -------------------------------------------------------------- 参数区 */
+
+
+.wk-params {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 14px 16px;
+  background: var(--wk-soft);
+  border-radius: var(--wk-radius);
+  margin-bottom: 14px;
+}
+
+.wk-params-title {
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--wk-muted);
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+
+.wk-params-empty {
+  font-size: 13px;
+  color: var(--wk-muted);
+  margin: 0;
+}
+
+.wk-param {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.wk-param-label {
+  font-size: 12px;
+  color: #4a5160;
+  white-space: nowrap;
+}
+
+.wk-readout {
+  font-family: var(--gh-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wk-accent);
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.wk-param-hint {
+  font-size: 11px;
+  color: var(--wk-muted);
+  white-space: nowrap;
+}
+
+.wk-range {
+  width: 132px;
+  accent-color: var(--wk-accent);
+  cursor: pointer;
+}
+
+.wk-range:focus-visible {
+  outline: 2px solid var(--wk-accent);
+  outline-offset: 3px;
+}
+
+.wk-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--wk-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--wk-ink);
+  cursor: pointer;
+}
+
+.wk-select:focus-visible {
+  outline: 2px solid var(--wk-accent);
+  outline-offset: 1px;
+}
+
+/* 开关：轨道 + 滑块，开时轨道变强调色。
+   文字状态由 aria-checked 播报，视觉上不依赖颜色也能看出滑块位置。 */
+.wk-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--wk-line);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.wk-switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #b9c0cc;
+  transition: left .16s ease, background .16s ease;
+}
+
+.wk-switch.is-on {
+  border-color: var(--wk-accent);
+  background: var(--wk-accent-soft);
+}
+
+.wk-switch.is-on i {
+  left: 19px;
+  background: var(--wk-accent);
+}
+
+.wk-switch:focus-visible {
+  outline: 2px solid var(--wk-accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- 导航 */
+
+.wk-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.wk-btn {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 9px 16px;
+  border: 1px solid var(--wk-line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--wk-ink);
+  cursor: pointer;
+  transition: border-color .14s ease, background .14s ease;
+}
+
+.wk-btn:hover:not(:disabled) {
+  border-color: #c9cfdb;
+  background: #fbfcfe;
+}
+
+.wk-btn.is-primary {
+  background: var(--wk-accent);
+  border-color: var(--wk-accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.wk-btn.is-primary:hover:not(:disabled) {
+  background: #2f4ce0;
+  border-color: #2f4ce0;
+}
+
+.wk-btn:disabled {
+  color: #b6bcc8;
+  cursor: default;
+  background: #fafbfc;
+  border-color: var(--wk-line-soft);
+}
+
+.wk-btn.is-primary:disabled {
+  background: #dfe3ea;
+  border-color: #dfe3ea;
+  color: #fff;
+}
+
+.wk-btn:focus-visible {
+  outline: 2px solid var(--wk-accent);
+  outline-offset: 2px;
+}
+
+.wk-count {
+  font-family: var(--gh-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--wk-muted);
+  min-width: 4.5em;
+  text-align: center;
+}
+
+.wk-kbd-hint {
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--wk-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- 响应式 */
+
+@media (max-width: 560px) {
+  .wk { padding: 0 14px 44px; }
+  .wk-title { font-size: 20px; }
+  .wk-card { padding: 16px 14px 18px; }
+  .wk-flow { padding: 12px; }
+  .wk-group { flex-direction: column; gap: 6px; }
+  .wk-group-name { flex: none; padding-top: 0; }
+  .wk-params { gap: 10px 14px; }
+  .wk-range { width: 110px; }
+  .wk-nav { gap: 10px; }
+  .wk-btn { padding: 9px 12px; font-size: 12px; }
+  .wk-kbd-hint { display: none; }
+}

@@ -1,0 +1,253 @@
+/* ==========================================================================
+   Transformer 图解 · 页面自有样式
+   --------------------------------------------------------------------------
+   只允许 .tf- 类名。指标卡、条形图、流程块、判断条已经在 shared/walk-shell.css
+   里了（.wk-* 前缀），这里不重复定义——否则调一次共享层要改两个地方。
+
+   本文件只留这个图解独有的画法：对话气泡、token 链、向量格、位置编码对照、
+   注意力矩阵、解码时间轴。
+   ========================================================================== */
+
+:root {
+  /* 高亮色：共享层用它标「被选中的那一个」，这里换成墨绿，和 Agent 页区分开 */
+  --wk-hit: #0f766e;
+  --wk-hit-soft: #e6f4f1;
+  --wk-hit-ink: #14453f;
+
+  --tf-ink: #14161b;
+  --tf-muted: #6b7280;
+  --tf-line: #e6e9ef;
+  --tf-soft: #f7f8fb;
+  --tf-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ------------------------------------------------------------ 对话气泡 */
+
+.tf-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--tf-soft);
+  border-radius: 14px;
+  border-left: 2px solid var(--wk-accent);
+}
+
+.tf-bubble-role {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--tf-muted);
+  padding-top: 2px;
+}
+
+.tf-bubble-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--tf-ink);
+}
+
+/* -------------------------------------------------------------- token */
+
+.tf-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tf-token {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 9px;
+  border: 1px solid var(--tf-line);
+  border-radius: 9px;
+  background: #fff;
+  min-width: 42px;
+}
+
+.tf-token b {
+  font-family: var(--tf-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tf-ink);
+  line-height: 1.3;
+}
+
+.tf-token i {
+  font-style: normal;
+  font-family: var(--tf-mono);
+  font-size: 10px;
+  color: #a3aab8;
+}
+
+/* --------------------------------------------------------------- 向量 */
+
+.tf-vec {
+  display: flex;
+  gap: 3px;
+}
+
+.tf-vec i {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-family: var(--tf-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-ink);
+  border-radius: 5px;
+}
+
+.tf-vec i.is-neg { color: #7a1f1f; }
+
+/* --------------------------------------------------------- 位置编码对照 */
+
+.tf-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.tf-pair-col {
+  border: 1px solid var(--tf-line);
+  border-radius: 11px;
+  padding: 12px;
+}
+
+.tf-pair-label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--tf-muted);
+  margin-bottom: 9px;
+}
+
+.tf-pair-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.tf-pair-row:last-child { margin-bottom: 0; }
+
+.tf-pair-word {
+  flex: 0 0 1.6em;
+  font-size: 13px;
+  color: var(--tf-ink);
+}
+
+/* --------------------------------------------------------- 注意力矩阵 */
+
+.tf-matrix {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 11px;
+  width: 100%;
+  max-width: 460px;
+  /* fixed 布局让每格等宽：auto 布局下第一列（令牌名）会按内容撑开，
+     五列宽度参差不齐，热力图看起来像画歪了 */
+  table-layout: fixed;
+}
+
+.tf-matrix th:first-child { width: 54px; }
+
+.tf-matrix th {
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--tf-muted);
+  padding: 2px 3px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tf-matrix th.tf-matrix-corner {
+  font-size: 9.5px;
+  color: #b6bcc8;
+  text-align: left;
+}
+
+.tf-matrix td {
+  height: 30px;
+  text-align: center;
+  font-family: var(--tf-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  border-radius: 5px;
+  background: var(--tf-soft);
+}
+
+/* 被掩码的位置用斜纹，不只靠灰：灰度打印或色觉障碍下也能看出「这里被挡住了」 */
+.tf-matrix td.is-masked {
+  background: repeating-linear-gradient(
+    45deg, #f3f4f7, #f3f4f7 4px, #e9ebf1 4px, #e9ebf1 8px
+  );
+  color: #b6bcc8;
+  font-size: 9px;
+}
+
+/* --------------------------------------------------------------- 时间轴 */
+
+.tf-timeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 10px;
+  background: var(--tf-soft);
+  border-radius: 10px;
+}
+
+.tf-tl-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #dbe3f5;
+}
+
+.tf-tl-block b {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #253a6b;
+  line-height: 1.3;
+}
+
+.tf-tl-block span {
+  font-size: 9.5px;
+  color: #4a5160;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.tf-tl-block.is-prefill { background: var(--wk-hit-soft); }
+.tf-tl-block.is-prefill b { color: var(--wk-hit); }
+
+.tf-tl-tick {
+  width: 7px;
+  height: 20px;
+  border-radius: 3px;
+  background: #c9d3ea;
+}
+
+.tf-tl-more {
+  font-size: 11px;
+  color: var(--tf-muted);
+  padding-left: 2px;
+}
+
+/* -------------------------------------------------------------- 响应式 */
+
+@media (max-width: 560px) {
+  :root { --wk-bar-label-w: 66px; }
+  .tf-vec i { width: 24px; height: 21px; font-size: 9px; }
+  .tf-matrix td { height: 26px; font-size: 9px; }
+  .tf-bubble-text { font-size: 14px; }
+}
