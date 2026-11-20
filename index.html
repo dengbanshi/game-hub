@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>游戏大厅</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bfd'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E">
+<meta name="description" content="纯静态的网页游戏大厅：一个 games.json 清单，一个 iframe 装一个游戏。">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="top">
+  <span class="eyebrow">GAME HUB · 静态站</span>
+  <h1>游戏大厅</h1>
+  <p>选择一个游戏，开始探索。</p>
+</header>
+
+<main id="lobby">
+  <div class="controls">
+    <label for="search">查找游戏</label>
+    <input id="search" type="search" placeholder="输入游戏名称或 id" autocomplete="off">
+    <span id="status" role="status">正在读取游戏…</span>
+  </div>
+  <section id="games" class="grid" aria-label="游戏列表"></section>
+  <p id="empty" class="notice" hidden>没有找到匹配的游戏。</p>
+</main>
+
+<section id="player" hidden>
+  <div class="playerbar">
+    <button id="back" type="button">← 返回大厅</button>
+    <strong id="title"></strong>
+    <a id="newtab" target="_blank" rel="noopener">在新标签页打开 ↗</a>
+  </div>
+  <iframe id="frame" title="游戏内容" allow="fullscreen"></iframe>
+</section>
+
+<noscript><p class="notice">这个大厅靠 JavaScript 读取游戏清单，请打开脚本后再看。</p></noscript>
+
+<script type="module" src="./client.js"></script>
+</body>
+</html>

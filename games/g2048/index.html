@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2048</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bfd'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3E2%3C/text%3E%3C/svg%3E">
+<style>
+:root{--ink:#14161b;--muted:#6b7280;--line:#e3e6ec;--accent:#3b5bfd}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 20px 36px;background:#fff;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:430px;margin:0 auto}
+a.back{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--muted);text-decoration:none}
+a.back:hover{color:var(--ink)}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{font-size:20px;margin:0;font-weight:500}
+.scores{display:flex;gap:8px}
+.score{background:#f2f4f7;border-radius:10px;padding:6px 12px;text-align:center;min-width:74px}
+.score span{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em}
+.score b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.board{position:relative;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:9px;background:#e9edf4;padding:9px;border-radius:16px;aspect-ratio:1/1;touch-action:none;user-select:none}
+.cell{display:flex;align-items:center;justify-content:center;border-radius:11px;background:#d7dfea;font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;transition:background .12s ease,color .12s ease,transform .12s ease}
+.cell.big{font-size:21px}
+.cell.huge{font-size:17px}
+.bar{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+button:hover{border-color:#c9cfdb}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.tip{font-size:12px;color:var(--muted);line-height:1.7;margin-top:10px}
+.over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(245,246,248,.86);border-radius:16px;font-size:15px}
+.over[hidden]{display:none}
+.pop{animation:pop .16s ease}
+@keyframes pop{from{transform:scale(.86)}to{transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" id="back" href="../../index.html" hidden>← 返回大厅</a>
+  <div class="head">
+    <h1>2048</h1>
+    <div class="scores">
+      <div class="score"><span>分数</span><b id="score">0</b></div>
+      <div class="score"><span>最高</span><b id="best">0</b></div>
+    </div>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="bar">
+    <button id="newGame" class="primary" type="button">新游戏</button>
+    <span id="hint" style="font-size:12px;color:var(--muted)"></span>
+  </div>
+  <p class="tip">方向键或 WASD 移动（手机上直接滑动）。相同数字撞到一起就合并，目标是 2048。</p>
+</div>
+<script>
+const N = 4;
+const boardEl = document.getElementById('board');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const overEl = document.createElement('div');
+overEl.className = 'over';
+overEl.hidden = true;
+boardEl.append(overEl);
+
+const STORAGE_KEY = 'game-hub-2048-best';
+const COLORS = {
+  2:    ['#f2f6fd', '#465063'],
+  4:    ['#dce8fa', '#33415a'],
+  8:    ['#cadcfb', '#1b3a8f'],
+  16:   ['#a6c4fa', '#14306f'],
+  32:   ['#7ea6f7', '#0b1f4f'],
+  64:   ['#4f7bf0', '#ffffff'],
+  128:  ['#3b5bfd', '#ffffff'],
+  256:  ['#2f49d6', '#ffffff'],
+  512:  ['#2637b0', '#ffffff'],
+  1024: ['#1d2a8a', '#ffffff'],
+  2048: ['#121a5e', '#ffd76a']
+};
+
+let cells = [];
+let grid = [];
+let score = 0;
+let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
+let locked = false;
+let reached2048 = false;
+
+for (let i = 0; i < N * N; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cells.push(cell);
+  boardEl.append(cell);
+}
+
+function addRandomTile() {
+  const empty = [];
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) if (grid[y][x] === 0) empty.push([x, y]);
+  }
+  if (!empty.length) return false;
+  const [x, y] = empty[Math.floor(Math.random() * empty.length)];
+  grid[y][x] = Math.random() < 0.9 ? 2 : 4;
+  return true;
+}
+
+function slideLine(line) {
+  const values = line.filter((v) => v !== 0);
+  const out = [];
+  let gained = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] === values[i + 1]) {
+      out.push(values[i] * 2);
+      gained += values[i] * 2;
+      i++;
+    } else {
+      out.push(values[i]);
+    }
+  }
+  while (out.length < N) out.push(0);
+  return { out, gained };
+}
+
+function readLine(dir, i) {
+  if (dir === 'left') return grid[i].slice();
+  if (dir === 'right') return grid[i].slice().reverse();
+  if (dir === 'up') return Array.from({ length: N }, (_, j) => grid[j][i]);
+  return Array.from({ length: N }, (_, j) => grid[N - 1 - j][i]);
+}
+
+function writeLine(dir, i, line) {
+  if (dir === 'left') { grid[i] = line; return; }
+  if (dir === 'right') { grid[i] = line.slice().reverse(); return; }
+  if (dir === 'up') { for (let j = 0; j < N; j++) grid[j][i] = line[j]; return; }
+  for (let j = 0; j < N; j++) grid[N - 1 - j][i] = line[j];
+}
+
+function move(dir) {
+  if (locked) return;
+  let changed = false;
+  let gained = 0;
+  for (let i = 0; i < N; i++) {
+    const before = readLine(dir, i);
+    const { out, gained: g } = slideLine(before);
+    gained += g;
+    if (out.join(',') !== before.join(',')) changed = true;
+    writeLine(dir, i, out);
+  }
+  if (!changed) return;
+
+  score += gained;
+  if (score > best) {
+    best = score;
+    localStorage.setItem(STORAGE_KEY, String(best));
+  }
+  addRandomTile();
+  render();
+
+  if (!reached2048 && grid.some((row) => row.some((v) => v >= 2048))) {
+    reached2048 = true;
+    document.getElementById('hint').textContent = '达成 2048，还能继续冲更高。';
+  }
+  if (isGameOver()) {
+    overEl.hidden = false;
+    overEl.replaceChildren();
+    const text = document.createElement('div');
+    text.textContent = '没有可走的格子了，最终 ' + score + ' 分。';
+    const again = document.createElement('button');
+    again.type = 'button';
+    again.className = 'primary';
+    again.textContent = '再来一局';
+    again.addEventListener('click', start);
+    overEl.append(text, again);
+  }
+}
+
+function isGameOver() {
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (grid[y][x] === 0) return false;
+      if (x + 1 < N && grid[y][x] === grid[y][x + 1]) return false;
+      if (y + 1 < N && grid[y][x] === grid[y + 1][x]) return false;
+    }
+  }
+  return true;
+}
+
+function render() {
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const cell = cells[y * N + x];
+      const value = grid[y][x];
+      cell.textContent = value || '';
+      const palette = COLORS[value] || COLORS[2048];
+      cell.style.background = value ? palette[0] : '#d7dfea';
+      cell.style.color = value ? palette[1] : 'transparent';
+      cell.className = 'cell' + (value >= 1024 ? ' huge' : value >= 128 ? ' big' : '');
+      if (value) {
+        cell.classList.remove('pop');
+        void cell.offsetWidth;
+        cell.classList.add('pop');
+      }
+    }
+  }
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+}
+
+function start() {
+  grid = Array.from({ length: N }, () => Array(N).fill(0));
+  score = 0;
+  locked = false;
+  reached2048 = false;
+  overEl.hidden = true;
+  document.getElementById('hint').textContent = '';
+  addRandomTile();
+  addRandomTile();
+  render();
+}
+
+const KEYS = {
+  ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+  a: 'left', d: 'right', w: 'up', s: 'down'
+};
+
+document.addEventListener('keydown', (event) => {
+  const dir = KEYS[event.key];
+  if (!dir) return;
+  event.preventDefault();
+  move(dir);
+});
+
+let touchStart = null;
+boardEl.addEventListener('pointerdown', (event) => {
+  touchStart = { x: event.clientX, y: event.clientY };
+});
+boardEl.addEventListener('pointerup', (event) => {
+  if (!touchStart) return;
+  const dx = event.clientX - touchStart.x;
+  const dy = event.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+  else move(dy > 0 ? 'down' : 'up');
+});
+
+document.getElementById('newGame').addEventListener('click', start);
+if (window.self === window.top) document.getElementById('back').hidden = false;
+
+start();
+</script>
+</body>
+</html>

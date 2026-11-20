@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>贪吃蛇</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b45309'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<style>
+:root{--ink:#14161b;--muted:#6b7280;--line:#e3e6ec;--accent:#3b5bfd}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 20px 36px;background:#fff;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:520px;margin:0 auto}
+a.back{display:inline-block;margin-bottom:14px;font-size:13px;color:var(--muted);text-decoration:none}
+a.back:hover{color:var(--ink)}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{font-size:20px;margin:0;font-weight:500}
+.scores{display:flex;gap:8px}
+.score{background:#f2f4f7;border-radius:10px;padding:6px 12px;text-align:center;min-width:70px}
+.score span{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em}
+.score b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+canvas{display:block;width:100%;height:auto;background:#0f1117;border-radius:12px;touch-action:none}
+.bar{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+button:hover{border-color:#c9cfdb}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.tip{font-size:12px;color:var(--muted);line-height:1.7;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" id="back" href="../../index.html" hidden>← 返回大厅</a>
+  <div class="head">
+    <h1>贪吃蛇</h1>
+    <div class="scores">
+      <div class="score"><span>分数</span><b id="score">0</b></div>
+      <div class="score"><span>最高</span><b id="best">0</b></div>
+    </div>
+  </div>
+  <canvas id="board"></canvas>
+  <div class="bar">
+    <button id="start" class="primary" type="button">开始</button>
+    <button id="pause" type="button">暂停</button>
+    <button id="restart" type="button">重新开始</button>
+  </div>
+  <p class="tip">方向键或 WASD 转向，空格暂停，R 重开。撞墙和撞自己都算结束，蛇身越长跑得越快。</p>
+</div>
+<script>
+const COLS = 20, ROWS = 20, CELL = 24;
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+canvas.width = COLS * CELL * dpr;
+canvas.height = ROWS * CELL * dpr;
+ctx.scale(dpr, dpr);
+
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const STORAGE_KEY = 'game-hub-snake-best';
+
+let snake, dir, pending, food, score, timer = null, state = 'ready';
+let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
+
+function speed() {
+  return Math.max(70, 150 - Math.floor(score / 50) * 8);
+}
+
+function placeFood() {
+  const free = [];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (!snake.some((s) => s.x === x && s.y === y)) free.push({ x, y });
+    }
+  }
+  food = free.length ? free[Math.floor(Math.random() * free.length)] : null;
+}
+
+function reset() {
+  clearTimeout(timer);
+  snake = [{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }];
+  dir = { x: 1, y: 0 };
+  pending = [];
+  score = 0;
+  state = 'ready';
+  placeFood();
+  scoreEl.textContent = '0';
+  bestEl.textContent = best;
+  document.getElementById('start').textContent = '开始';
+  draw();
+}
+
+function startGame() {
+  if (state === 'running') return;
+  state = 'running';
+  document.getElementById('start').textContent = '进行中';
+  clearTimeout(timer);
+  timer = setTimeout(tick, speed());
+  draw();
+}
+
+function pauseGame() {
+  if (state === 'running') {
+    state = 'paused';
+    clearTimeout(timer);
+    draw();
+  } else if (state === 'paused') {
+    state = 'running';
+    timer = setTimeout(tick, speed());
+    draw();
+  }
+}
+
+function gameOver() {
+  state = 'over';
+  clearTimeout(timer);
+  if (score > best) {
+    best = score;
+    localStorage.setItem(STORAGE_KEY, String(best));
+    bestEl.textContent = best;
+  }
+  document.getElementById('start').textContent = '再来一局';
+  draw();
+}
+
+function tick() {
+  if (state !== 'running') return;
+
+  while (pending.length) {
+    const d = pending.shift();
+    if (d.x === -dir.x && d.y === -dir.y) continue;
+    if (d.x === dir.x && d.y === dir.y) continue;
+    dir = d;
+    break;
+  }
+
+  const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+  const hitWall = head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS;
+  const hitSelf = snake.some((s, i) => i < snake.length - 1 && s.x === head.x && s.y === head.y);
+
+  if (hitWall || hitSelf) {
+    gameOver();
+    return;
+  }
+
+  snake.unshift(head);
+  if (food && head.x === food.x && head.y === food.y) {
+    score += 10;
+    scoreEl.textContent = score;
+    placeFood();
+  } else {
+    snake.pop();
+  }
+
+  draw();
+  timer = setTimeout(tick, speed());
+}
+
+function draw() {
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+
+  ctx.fillStyle = 'rgba(255,255,255,.045)';
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) ctx.fillRect(x * CELL + CELL - 2, y * CELL + CELL - 2, 2, 2);
+  }
+
+  if (food) {
+    ctx.fillStyle = '#ff8a4c';
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  snake.forEach((segment, i) => {
+    ctx.fillStyle = i === 0 ? '#dbe6ff' : '#7fa2ff';
+    const pad = i === 0 ? 1 : 2;
+    ctx.fillRect(segment.x * CELL + pad, segment.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
+  });
+
+  if (state !== 'running') {
+    const label = state === 'over'
+      ? '撞了 · ' + score + ' 分'
+      : state === 'paused' ? '已暂停' : '按开始或方向键出发';
+    ctx.fillStyle = 'rgba(15,17,23,.72)';
+    ctx.fillRect(0, ROWS * CELL / 2 - 30, COLS * CELL, 60);
+    ctx.fillStyle = '#e8eefc';
+    ctx.font = '500 17px system-ui,-apple-system,"PingFang SC",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, (COLS * CELL) / 2, (ROWS * CELL) / 2);
+  }
+}
+
+const DIRS = {
+  ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+  a: { x: -1, y: 0 }, d: { x: 1, y: 0 }, w: { x: 0, y: -1 }, s: { x: 0, y: 1 }
+};
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === ' ') {
+    event.preventDefault();
+    if (state === 'running' || state === 'paused') pauseGame();
+    else startGame();
+    return;
+  }
+  if (event.key === 'r' || event.key === 'R') {
+    reset();
+    startGame();
+    return;
+  }
+  const d = DIRS[event.key];
+  if (!d) return;
+  event.preventDefault();
+  if (state === 'ready' || state === 'over') {
+    if (state === 'over') reset();
+    pending.push(d);
+    startGame();
+    return;
+  }
+  if (pending.length < 2) pending.push(d);
+});
+
+let touchStart = null;
+canvas.addEventListener('pointerdown', (event) => {
+  touchStart = { x: event.clientX, y: event.clientY };
+});
+canvas.addEventListener('pointerup', (event) => {
+  if (!touchStart) return;
+  const dx = event.clientX - touchStart.x;
+  const dy = event.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+  const d = Math.abs(dx) > Math.abs(dy)
+    ? { x: dx > 0 ? 1 : -1, y: 0 }
+    : { x: 0, y: dy > 0 ? 1 : -1 };
+  if (state === 'ready' || state === 'over') {
+    if (state === 'over') reset();
+    pending.push(d);
+    startGame();
+    return;
+  }
+  if (pending.length < 2) pending.push(d);
+});
+
+document.getElementById('start').addEventListener('click', () => {
+  if (state === 'over') reset();
+  startGame();
+});
+document.getElementById('pause').addEventListener('click', pauseGame);
+document.getElementById('restart').addEventListener('click', () => { reset(); startGame(); });
+
+if (window.self === window.top) document.getElementById('back').hidden = false;
+
+reset();
+</script>
+</body>
+</html>
