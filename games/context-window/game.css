@@ -381,70 +381,8 @@ body {
 
 /* ------------------------------------------------------------------ 复盘 */
 
-.review { animation: cw-in .22s ease; }
-.review[hidden] { display: none; }
-
-@keyframes cw-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: none; }
-}
-
-.verdict {
-  margin: 0 0 14px;
-  font-size: 14px;
-  line-height: 1.78;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--gh-line);
-  margin-bottom: 12px;
-}
-
-.metric span {
-  display: block;
-  font-size: 11px;
-  color: var(--gh-muted);
-  margin-bottom: 3px;
-}
-
-.metric b {
-  font-size: 17px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.detail-list { display: flex; flex-direction: column; gap: 6px; }
-
-.detail-row {
-  display: flex;
-  gap: 8px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: #3c4354;
-}
-
-.detail-row .mark {
-  flex: 0 0 16px;
-  text-align: center;
-}
-
-.detail-row.is-good .mark { color: var(--cw-keep); }
-.detail-row.is-bad .mark { color: var(--cw-alert); }
-.detail-row.is-warn .mark { color: #a2670d; }
-
-.hint {
-  margin: 14px 0 0;
-  padding: 11px 13px;
-  background: #f7f8fb;
-  border-radius: 9px;
-  font-size: 12.5px;
-  line-height: 1.78;
-  color: var(--gh-muted);
-}
+/* 复盘面板的样式在 shared/review-panel.css。这里刻意不留任何一份本地副本：
+   四个游戏的复盘必须长得一样，各写一份就一定会分叉。 */
 
 @media (max-width: 560px) {
   body { padding: 18px 14px 40px; }
@@ -452,7 +390,6 @@ body {
   .panel { padding: 14px; }
   .cells { grid-template-columns: repeat(12, 1fr); }
   .cell { height: 18px; }
-  .metrics { grid-template-columns: repeat(2, 1fr); }
   .choices { margin-left: 0; width: 100%; }
   .win-row { flex-wrap: wrap; }
   .win-title { flex: 1 1 100%; white-space: normal; }

@@ -82,15 +82,6 @@ const el = {
   next: document.getElementById('next'),
   reset: document.getElementById('reset'),
   status: document.getElementById('status'),
-  review: document.getElementById('review'),
-  reviewMeta: document.getElementById('review-meta'),
-  verdict: document.getElementById('verdict'),
-  mScore: document.getElementById('m-score'),
-  mUsage: document.getElementById('m-usage'),
-  mNoise: document.getElementById('m-noise'),
-  mLost: document.getElementById('m-lost'),
-  detailList: document.getElementById('detailList'),
-  reviewHint: document.getElementById('review-hint'),
 };
 
 // ---------------------------------------------------------------- 4. 纯函数
@@ -122,6 +113,27 @@ function buildQueue() {
   return queue;
 }
 
+/** 当前窗口里某条信息是以什么档位留着的；没留就是 undefined。 */
+function windowMode(itemId) {
+  const entry = state.window.find((e) => e.item.id === itemId);
+  return entry ? entry.mode : undefined;
+}
+
+/**
+ * 某道题在「给定窗口」下缺哪些证据。
+ * 把窗口来源抽成参数，是为了让复盘能拿同一道题、同一个答案，
+ * 在几种假设的窗口策略下重新判分——这就是反事实那一层的数据来源。
+ * 如果这里直接读 state.window，反事实就只能靠另写一份判定逻辑，
+ * 而两份逻辑迟早会跑偏。
+ */
+function missingFor(question, modeOf) {
+  return question.needs.filter((need) => {
+    const mode = modeOf(need.item);
+    if (!mode) return true;
+    return need.level === 'full' && mode !== 'full';
+  });
+}
+
 /**
  * 判定一道题。
  * 关键不是「答对没有」，而是「你的窗口撑不撑得住这个答案」——
@@ -129,15 +141,20 @@ function buildQueue() {
  */
 function evaluate(question, choice) {
   const correct = choice === question.answer;
-  const missing = question.needs.filter((need) => {
-    const entry = state.window.find((e) => e.item.id === need.item);
-    if (!entry) return true;
-    return need.level === 'full' && entry.mode !== 'full';
-  });
+  const missing = missingFor(question, windowMode);
 
   if (!correct) return { credit: 0, correct: false, missing };
   if (missing.length) return { credit: SCORE_LUCKY, correct: true, missing };
   return { credit: SCORE_PER_QUESTION, correct: true, missing: [] };
+}
+
+/** 同样的答案、不同的窗口策略，重新判一次分。只换窗口，别的都不动。 */
+function scoreUnder(modeOf) {
+  return SCENARIO.questions.reduce((sum, question) => {
+    const record = state.answers[question.id];
+    if (!record || !record.correct) return sum;
+    return sum + (missingFor(question, modeOf).length ? SCORE_LUCKY : SCORE_PER_QUESTION);
+  }, 0);
 }
 
 function missingText(missing) {
@@ -484,89 +501,110 @@ function finish() {
   const ratio = used ? noiseSlots / used : 0;
   const peakRatio = state.peak / budget;
 
-  el.reviewMeta.textContent = `${SCENARIO.questions.length} 题 · 满分 ${SCENARIO.questions.length * SCORE_PER_QUESTION}`;
-  el.mScore.textContent = String(state.score);
-  el.mUsage.textContent = Math.round(peakRatio * 100) + '%';
-  el.mNoise.textContent = Math.round(ratio * 100) + '%';
-  el.mLost.textContent = String(lost);
+  const fullScore = SCENARIO.questions.length * SCORE_PER_QUESTION;
 
-  if (state.score >= SCENARIO.questions.length * SCORE_PER_QUESTION) {
-    el.verdict.textContent =
+  // ① 判定：先给结论，别让人自己从四个指标里推
+  let verdict;
+  if (state.score >= fullScore) {
+    verdict =
       '满分。你留下的每一格都撑住了一个结论，而且没有把预算浪费在闲聊上——' +
       '这就是一个合格的上下文策略：够用，且不臃肿。';
-  } else if (state.score >= SCENARIO.questions.length * SCORE_PER_QUESTION * 0.66) {
-    el.verdict.textContent =
+  } else if (state.score >= fullScore * 0.66) {
+    verdict =
       '大部分结论站得住，但有一两处是靠印象补的。真实事故里，这种「差不多记得」' +
       '往往比明确不知道更危险，因为它会让你跳过验证。';
   } else {
-    el.verdict.textContent =
+    verdict =
       '分数偏低。不是你推理能力的问题，是证据没留住——窗口里的东西撑不住你的结论。';
   }
 
-  const rows = SCENARIO.questions.map((question, index) => {
-    const record = state.answers[question.id];
-    const row = document.createElement('div');
-    row.className = 'detail-row';
+  // ④ 反事实：题目不变、你选的答案也不变，只换窗口里留了什么
+  const keyIds = new Set(KEY_ITEMS.map((item) => item.id));
+  const policies = [
+    { label: '你这局的窗口', value: state.score, mine: true },
+    { label: '关键证据全留原文', value: scoreUnder((id) => (keyIds.has(id) ? 'full' : undefined)) },
+    { label: '关键证据全压摘要', value: scoreUnder((id) => (keyIds.has(id) ? 'packed' : undefined)) },
+    { label: '什么都不留', value: scoreUnder(() => undefined) },
+  ];
+  const bestPolicy = policies.reduce((a, b) => (b.value > a.value ? b : a));
+  const keySlots = KEY_ITEMS.reduce((sum, item) => sum + item.size, 0);
 
-    if (!record) {
-      row.classList.add('is-warn');
-      const mark = document.createElement('span');
-      mark.className = 'mark';
-      mark.textContent = '·';
-      const text = document.createElement('span');
-      text.textContent = `第 ${index + 1} 题未作答`;
-      row.append(mark, text);
-      return row;
-    }
-
-    const full = record.credit === SCORE_PER_QUESTION;
-    row.classList.add(full ? 'is-good' : record.credit > 0 ? 'is-warn' : 'is-bad');
-
-    const mark = document.createElement('span');
-    mark.className = 'mark';
-    mark.textContent = full ? '✓' : record.credit > 0 ? '!' : '✕';
-
-    const text = document.createElement('span');
-    if (full) {
-      text.textContent = `第 ${index + 1} 题：答对，证据完整（+${record.credit}）`;
-    } else if (record.credit > 0) {
-      text.textContent = `第 ${index + 1} 题：答对但缺${missingText(record.missing)}，按蒙对计（+${record.credit}）`;
-    } else {
-      text.textContent = `第 ${index + 1} 题：答错（+0）`;
-    }
-
-    row.append(mark, text);
-    return row;
-  });
-
-  el.detailList.replaceChildren(...rows);
-
-  // 只给最要紧的一条建议，列五条等于没建议
-  const fullScore = SCENARIO.questions.length * SCORE_PER_QUESTION;
-  let hint;
+  // ⑤ 建议：只给最要紧的一条，列五条等于没建议
+  let advice;
   if (state.score >= fullScore) {
-    hint = `这局满分，而且是每一题都有据可依。想加点难度：把 scenario.js 里的 budget 从 ${budget} 降到 20，` +
+    advice = `这局满分，而且是每一题都有据可依。想加点难度：把 scenario.js 里的 budget 从 ${budget} 降到 20，` +
       '同样的题目还能不能全对？那时候你必须在「压缩哪一条」上做真正的取舍。';
   } else if (ratio > 0.3) {
-    hint = `你把 ${Math.round(ratio * 100)}% 的窗口留给了与任务无关的内容。` +
+    advice = `你把 ${Math.round(ratio * 100)}% 的窗口留给了与任务无关的内容。` +
       '如果把这几格换成关键日志的原文，第 3 题就不会丢分。';
   } else if (packedKeys > 0) {
-    hint = `你压缩了 ${packedKeys} 条关键证据。压缩省下的格子确实有用，` +
+    advice = `你压缩了 ${packedKeys} 条关键证据。压缩省下的格子确实有用，` +
       '但摘要答不了「具体数字是多少」这类问题——这就是压缩的延迟代价。';
   } else if (lost > 0) {
-    hint = `你丢掉了 ${lost} 条关键证据。有些题即使答对了，也只能算蒙对：` +
+    advice = `你丢掉了 ${lost} 条关键证据。有些题即使答对了，也只能算蒙对：` +
       '结论对了，但你的窗口撑不住它。';
   } else {
-    hint = '这次的关键证据你都留住了，但仍有失分。回头看看是不是题目的因果链没串起来——' +
+    advice = '这次的关键证据你都留住了，但仍有失分。回头看看是不是题目的因果链没串起来——' +
       '证据齐全不等于结论正确。';
   }
-  el.reviewHint.textContent = hint;
 
-  el.review.hidden = false;
+  GameReview.show({
+    meta: `${SCENARIO.questions.length} 题 · 满分 ${fullScore}`,
+    verdict,
+    metrics: [
+      { label: '得分', value: state.score, strong: true },
+      { label: '预算峰值占用', value: Math.round(peakRatio * 100) + '%' },
+      { label: '噪音占窗口', value: Math.round(ratio * 100) + '%' },
+      { label: '关键证据丢失', value: lost },
+    ],
+    attribution: {
+      kind: 'list',
+      label: '归因 · 逐题明细',
+      items: SCENARIO.questions.map((question, index) => {
+        const record = state.answers[question.id];
+        if (!record) {
+          return { tone: 'warn', mark: '·', text: `第 ${index + 1} 题未作答` };
+        }
+        if (record.credit === SCORE_PER_QUESTION) {
+          return {
+            tone: 'good',
+            mark: '✓',
+            text: `第 ${index + 1} 题：答对，证据完整（+${record.credit}）`,
+          };
+        }
+        if (record.credit > 0) {
+          return {
+            tone: 'warn',
+            mark: '!',
+            text: `第 ${index + 1} 题：答对但缺${missingText(record.missing)}，按蒙对计（+${record.credit}）`,
+          };
+        }
+        return { tone: 'bad', mark: '✕', text: `第 ${index + 1} 题：答错（+0）` };
+      }),
+    },
+    counterfactual: {
+      label: '反事实 · 换一种窗口策略',
+      note: '题目不变、你选的答案也不变，只把「窗口里留了什么」换成另一种策略重新判分。' +
+        '分数之所以会变，是因为同一个结论在不同证据下的可信度不一样。',
+      bars: policies.map((policy) => ({
+        label: policy.label,
+        value: policy.value,
+        text: policy.value + ' 分',
+        best: policy.value === bestPolicy.value,
+        mine: Boolean(policy.mine),
+      })),
+      footer: `「关键证据全留原文」这条线是这套题在理想情况下的上限，` +
+        `但它需要 ${keySlots} 格原文塞进 ${budget} 格预算——现实中放不下，` +
+        '这才是你必须做取舍、而不是「全都记住」的原因。' +
+        `另外注意「什么都不留」不是 0 分：结论蒙对时每题仍给 ${SCORE_LUCKY} 分。` +
+        '这也正是「蒙对」危险的地方——分数看着还行，窗口里其实什么都没撑住。',
+    },
+    advice,
+  });
+
   el.next.disabled = true;
   el.next.textContent = '已结束';
   el.reset.textContent = '再玩一次';
-  el.review.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ---------------------------------------------------------------- 8. 启动
@@ -584,7 +622,7 @@ function resetGame() {
   state.done = false;
   state.cards.clear();
 
-  el.review.hidden = true;
+  GameReview.hide();
   el.next.disabled = true;
   el.next.textContent = '进入下一轮';
   el.reset.textContent = '重开';

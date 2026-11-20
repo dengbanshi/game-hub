@@ -105,16 +105,6 @@ const el = {
   stTokens: document.getElementById('st-tokens'),
   stTime: document.getElementById('st-time'),
   stSpeed: document.getElementById('st-speed'),
-  review: document.getElementById('review'),
-  reviewLevel: document.getElementById('review-level'),
-  verdict: document.getElementById('verdict'),
-  rvSpeed: document.getElementById('rv-speed'),
-  rvTime: document.getElementById('rv-time'),
-  rvAccept: document.getElementById('rv-accept'),
-  rvMean: document.getElementById('rv-mean'),
-  roundsBody: document.getElementById('rounds-body'),
-  reviewHint: document.getElementById('review-hint'),
-  kcurve: document.getElementById('kcurve'),
 };
 
 // ---------------------------------------------------------------- 3. 概率模型
@@ -450,103 +440,109 @@ function revealRound(round, token) {
   });
 }
 
+/**
+ * 复盘：五段结构见 doc/DEV-GUIDE.md §2.5。
+ * 这里只负责算数，排版交给 shared/review-panel.js——
+ * 四个游戏共用同一个面板，读者每局结束后看到的是同一套读法。
+ */
 function renderReview() {
   const level = LEVELS[state.levelId];
   const total = state.time;
   const speed = SENTENCE.length / total;
-  const acceptedSum = state.rounds.reduce((s, r) => s + r.accepted, 0);
-  const guessSum = state.rounds.reduce((s, r) => s + r.slots, 0);
+  const acceptedSum = state.rounds.reduce((sum, round) => sum + round.accepted, 0);
+  const guessSum = state.rounds.reduce((sum, round) => sum + round.slots, 0);
+  const meanAccepted = acceptedSum / Math.max(1, state.rounds.length);
 
-  el.reviewLevel.textContent = `难度：${level.name} · 39 个 token`;
-  el.rvSpeed.textContent = speed.toFixed(2) + '×';
-  el.rvTime.textContent = total.toFixed(1);
-  el.rvAccept.textContent = guessSum ? Math.round((acceptedSum / guessSum) * 100) + '%' : '—';
-  el.rvMean.textContent = (acceptedSum / Math.max(1, state.rounds.length)).toFixed(2);
-
+  // ① 判定：先给结论，别让人自己去从四个指标里推
+  let verdict;
   if (speed < 1) {
-    el.verdict.textContent =
+    verdict =
       '加速比小于 1：你比老老实实逐 token 生成还慢。验证一次的开销已经超过省下的时间，' +
       '说明这个 k 在当前的接受率下纯属浪费。';
   } else if (speed < 1.5) {
-    el.verdict.textContent =
+    verdict =
       '有一点加速，但不多。你的 k 偏大——接受率撑不住这么长的串，每轮真正用上的只有前两位。';
   } else if (speed < 2.2) {
-    el.verdict.textContent =
+    verdict =
       '这是投机采样在真实系统里的典型区间。你已经踩到了「猜得够长」和「猜得太长」之间的那条线。';
   } else {
-    el.verdict.textContent =
+    verdict =
       '接近这个时间模型下的上限了。draft 被你用得很充分，每轮几乎没有浪费的猜测。';
   }
 
-  // 同一份规则、同一个种子，把每个 k 都跑一遍，作为「如果换 k 会怎样」的对照。
+  // ③ 归因：找出最亏的一轮，让「浪费」有一个具体的位置
+  const worst = state.rounds.reduce(
+    (acc, round) => {
+      const ratio = round.slots > 1 ? round.advance / round.slots : 1;
+      return ratio < acc.ratio ? { ratio, round } : acc;
+    },
+    { ratio: Infinity, round: null }
+  );
+
+  const tableNote = worst.round && worst.ratio < 0.5
+    ? `最亏的是第 ${state.rounds.indexOf(worst.round) + 1} 轮：猜了 ${worst.round.slots} 个，` +
+      `只推进 ${worst.round.advance} 个，后面那些猜测的成本已经付了，收益是零。`
+    : '每一轮的推进都接近 k，说明你选的 k 没有超出 draft 的能力上限。';
+
+  // ④ 反事实：同一档难度、同一个种子，把每个 k 都跑一遍整句
   const curve = KS.map((k) => simulate(k, state.levelId));
   const best = curve.reduce((a, b) => (b.speed > a.speed ? b : a));
-  const max = Math.max(...curve.map((c) => c.speed));
 
-  el.kcurve.replaceChildren(
-    ...curve.map((item) => {
-      const row = document.createElement('div');
-      row.className = 'kcurve-row' + (item.k === best.k ? ' is-best' : '');
-
-      const label = document.createElement('span');
-      label.className = 'kcurve-k';
-      label.textContent = 'k=' + item.k;
-
-      const track = document.createElement('span');
-      track.className = 'kcurve-track';
-      const bar = document.createElement('i');
-      bar.style.width = Math.max(2, (item.speed / max) * 100) + '%';
-      track.append(bar);
-
-      const val = document.createElement('span');
-      val.className = 'kcurve-v';
-      val.textContent = item.speed.toFixed(2) + '×';
-
-      row.append(label, track, val);
-      return row;
-    })
-  );
-
-  el.roundsBody.replaceChildren(
-    ...state.rounds.map((round, i) => {
-      const tr = document.createElement('tr');
-      if (round.k === best.k) tr.className = 'best';
-      const cells = [
-        String(i + 1),
-        String(round.k),
-        String(round.accepted),
-        String(round.advance),
-        round.time.toFixed(2),
-        (round.cumulativeSpeed).toFixed(2) + '×',
-      ];
-      cells.forEach((text, index) => {
-        const td = document.createElement('td');
-        td.textContent = text;
-        tr.append(td);
-      });
-      return tr;
-    })
-  );
-
+  // ⑤ 建议：一条就够，列五条等于没建议
   const bestRecord = store.get('best:' + state.levelId, 0);
-  let hint =
+  let advice =
     `在这档难度下，k=${best.k} 的平均表现最好（${best.speed.toFixed(2)}×）。` +
     `注意看 k 从 ${best.k} 继续往上时曲线为什么掉头：接受率是按位相乘的，` +
-    `第 8 位还能命中的概率只有第 1 位的几分之一，而验证成本照付。`;
+    '第 8 位还能命中的概率只有第 1 位的几分之一，而验证成本照付。';
 
   if (bestRecord > 0 && speed > bestRecord) {
     store.set('best:' + state.levelId, Number(speed.toFixed(2)));
-    hint += ` 这局刷新了本档最好成绩，原纪录 ${bestRecord.toFixed(2)}×。`;
+    advice += ` 这局刷新了本档最好成绩，原纪录 ${bestRecord.toFixed(2)}×。`;
   } else if (bestRecord > 0) {
-    hint += ` 本档最好成绩 ${bestRecord.toFixed(2)}×。`;
+    advice += ` 本档最好成绩 ${bestRecord.toFixed(2)}×。`;
   } else {
     // 第一次跑这一档，别说「原纪录 0.00×」——那读起来像系统坏了
     store.set('best:' + state.levelId, Number(speed.toFixed(2)));
-    hint += ` 这是本档的第一条记录（${speed.toFixed(2)}×），后面再跑会拿来对照。`;
+    advice += ` 这是本档的第一条记录（${speed.toFixed(2)}×），后面再跑会拿来对照。`;
   }
-  el.reviewHint.textContent = hint;
 
-  el.review.hidden = false;
+  GameReview.show({
+    meta: `难度：${level.name} · ${SENTENCE.length} 个 token`,
+    verdict,
+    metrics: [
+      { label: '最终加速比', value: speed.toFixed(2) + '×', strong: true },
+      { label: '总耗时', value: total.toFixed(1) },
+      { label: '接受率', value: guessSum ? Math.round((acceptedSum / guessSum) * 100) + '%' : '—' },
+      { label: '平均接受长度', value: meanAccepted.toFixed(2) },
+    ],
+    attribution: {
+      kind: 'table',
+      label: '归因 · 逐轮明细',
+      columns: ['轮', 'k', '接受', '推进', '本轮耗时', '累计加速比'],
+      rows: state.rounds.map((round, index) => [
+        index + 1,
+        round.k,
+        round.accepted,
+        round.advance,
+        round.time.toFixed(2),
+        round.cumulativeSpeed.toFixed(2) + '×',
+      ]),
+      note: tableNote,
+    },
+    counterfactual: {
+      label: '反事实 · 如果换一个 k',
+      note: '同一档难度、同一个随机种子，把你没选的 k 也各跑一遍整句——' +
+        '只改这一个变量，其他都不动。蓝色是你这局选的，绿色是这档难度下的最优。',
+      bars: curve.map((item) => ({
+        label: 'k=' + item.k,
+        value: item.speed,
+        text: item.speed.toFixed(2) + '×',
+        best: item.k === best.k,
+        mine: item.k === state.k,
+      })),
+    },
+    advice,
+  });
 }
 
 // ---------------------------------------------------------------- 7. 交互
@@ -560,7 +556,7 @@ function resetGame() {
   state.done = false;
   state.lastAdvance = 0;
 
-  el.review.hidden = true;
+  GameReview.hide();
   el.tracknote.textContent = '';
   el.track.replaceChildren();
   const empty = document.createElement('p');
@@ -617,7 +613,6 @@ async function runRound() {
     el.run.disabled = true;
     el.run.textContent = '已完成';
     renderReview();
-    el.review.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
   }
 

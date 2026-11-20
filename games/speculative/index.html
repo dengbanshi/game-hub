@@ -6,6 +6,7 @@
 <title>投机采样</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bfd'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../shared/game-shell.css">
+<link rel="stylesheet" href="../../shared/review-panel.css">
 <link rel="stylesheet" href="./game.css">
 </head>
 <body>
@@ -66,29 +67,7 @@
     <div class="stat strong"><span>加速比</span><b id="st-speed">—</b></div>
   </section>
 
-  <section class="panel review" id="review" hidden>
-    <div class="review-head">
-      <span class="label">复盘</span>
-      <span class="meta" id="review-level"></span>
-    </div>
-    <p class="verdict" id="verdict"></p>
-    <div class="stats stats-plain">
-      <div class="stat"><span>最终加速比</span><b id="rv-speed">—</b></div>
-      <div class="stat"><span>总耗时</span><b id="rv-time">—</b></div>
-      <div class="stat"><span>接受率</span><b id="rv-accept">—</b></div>
-      <div class="stat"><span>平均接受长度</span><b id="rv-mean">—</b></div>
-    </div>
-    <div class="table-wrap">
-      <table class="rounds">
-        <thead>
-          <tr><th>轮</th><th>k</th><th>接受</th><th>推进</th><th>本轮耗时</th><th>累计加速比</th></tr>
-        </thead>
-        <tbody id="rounds-body"></tbody>
-      </table>
-    </div>
-    <p class="hint" id="review-hint"></p>
-    <div class="kcurve" id="kcurve" aria-label="不同 k 的加速比对照"></div>
-  </section>
+  <!-- 复盘面板不写在这里：由 shared/review-panel.js 在 GameReview.show() 时注入 -->
 </main>
 
 <!-- 帮助内容：给共享壳的弹层读取。改动时同步 doc/games/speculative.md。 -->
@@ -126,6 +105,7 @@
 </div>
 
 <script src="../../shared/game-shell.js"></script>
+<script src="../../shared/review-panel.js"></script>
 <script src="./game.js"></script>
 </body>
 </html>

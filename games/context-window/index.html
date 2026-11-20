@@ -6,6 +6,7 @@
 <title>上下文窗口</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../shared/game-shell.css">
+<link rel="stylesheet" href="../../shared/review-panel.css">
 <link rel="stylesheet" href="./game.css">
 </head>
 <body>
@@ -48,21 +49,7 @@
     </div>
   </section>
 
-  <section class="panel review" id="review" hidden>
-    <div class="panel-head">
-      <span class="label">复盘</span>
-      <span class="meta" id="review-meta"></span>
-    </div>
-    <p class="verdict" id="verdict"></p>
-    <div class="metrics">
-      <div class="metric"><span>得分</span><b id="m-score">0</b></div>
-      <div class="metric"><span>预算峰值占用</span><b id="m-usage">0%</b></div>
-      <div class="metric"><span>噪音占窗口</span><b id="m-noise">0%</b></div>
-      <div class="metric"><span>关键证据丢失</span><b id="m-lost">0</b></div>
-    </div>
-    <div class="detail-list" id="detailList"></div>
-    <p class="hint" id="review-hint"></p>
-  </section>
+  <!-- 复盘面板不写在这里：由 shared/review-panel.js 在 GameReview.show() 时注入 -->
 </main>
 
 <!-- 帮助内容：给共享壳的弹层读取。改动时同步 doc/games/context-window.md。 -->
@@ -100,6 +87,7 @@
 </div>
 
 <script src="../../shared/game-shell.js"></script>
+<script src="../../shared/review-panel.js"></script>
 <script src="./scenario.js"></script>
 <script src="./game.js"></script>
 </body>
