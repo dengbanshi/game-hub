@@ -68,8 +68,9 @@
   display: grid;
   /* 用 minmax 而不是固定 4 列：2048 / 贪吃蛇的容器只有 430~520px，
      固定 4 列会把「无效按键」这种四个字挤成两行，还会剩一个孤零零的格子在第二行。
-     150px 这个下限让窄容器自动排成 2×2，宽容器（760px）仍然是 4 列。 */
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+     160px 这个下限让两个窄容器稳定排成 2×2，宽容器（760px）仍然是 4 列；
+     取 150px 时贪吃蛇的容器恰好能塞下 3 列，结果又变成「三加一」。 */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--gh-line);
