@@ -245,7 +245,10 @@ body{
   font-size:13px;
   color:var(--muted);
   text-decoration:none;
+  white-space:nowrap;
 }
+
+.playerbar a[hidden]{display:none}
 
 .playerbar a:hover{color:var(--accent)}
 

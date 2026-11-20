@@ -10,6 +10,7 @@ const player = $('player');
 const frame = $('frame');
 const titleEl = $('title');
 const newtab = $('newtab');
+const doclink = $('doclink');
 
 const PALETTE = ['#3b5bfd', '#0f766e', '#b45309', '#7c3aed', '#be123c', '#0369a1'];
 const ALL = { id: 'all', name: '全部' };
@@ -17,6 +18,11 @@ const ALL = { id: 'all', name: '全部' };
 let games = [];
 let categories = [];
 let active = 'all';
+let repo = '';
+
+// 游戏内的帮助弹层是覆盖层，用户按 Esc 的本意多半是「关掉弹层」。
+// 游戏会通过 postMessage 告知覆盖层状态，这里据此让 Esc 只做一件事。
+let overlayOpen = false;
 
 function colorOf(id) {
   let h = 0;
@@ -127,6 +133,14 @@ function openGame(g) {
   frame.src = url.href;
   newtab.href = url.href;
   titleEl.textContent = g.name;
+
+  // 设计文档放在仓库里，所以必须跳到 GitHub 才能渲染 Markdown。
+  // repo 写在 games.json 顶层，fork 之后改一处即可。
+  const docUrl = repo && g.doc ? `https://github.com/${repo}/blob/main/${g.doc}` : '';
+  doclink.hidden = !docUrl;
+  doclink.href = docUrl || '#';
+
+  overlayOpen = false;
   lobby.hidden = true;
   player.hidden = false;
   document.title = g.name + ' · 游戏大厅';
@@ -137,6 +151,8 @@ function closeGame() {
   frame.src = 'about:blank';
   player.hidden = true;
   lobby.hidden = false;
+  overlayOpen = false;
+  doclink.hidden = true;
   document.title = '游戏大厅';
   searchEl.focus();
 }
@@ -144,7 +160,15 @@ function closeGame() {
 $('back').addEventListener('click', closeGame);
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !player.hidden) closeGame();
+  if (event.key === 'Escape' && !player.hidden && !overlayOpen) closeGame();
+});
+
+window.addEventListener('message', (event) => {
+  // 只接受当前 iframe 自己发来的消息，避免同源的其他窗口误触发。
+  if (event.origin !== location.origin) return;
+  if (event.source !== frame.contentWindow) return;
+  if (!event.data || event.data.type !== 'game-hub:overlay') return;
+  overlayOpen = Boolean(event.data.open);
 });
 
 searchEl.addEventListener('input', render);
@@ -166,6 +190,7 @@ async function boot() {
 
     games = Array.isArray(data.games) ? data.games : [];
     categories = Array.isArray(data.categories) ? data.categories : [];
+    repo = typeof data.repo === 'string' ? data.repo : '';
 
     const declared = new Set(categories.map((c) => c.id));
     for (const g of games) {

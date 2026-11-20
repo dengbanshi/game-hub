@@ -1,0 +1,215 @@
+/* ==========================================================================
+   game-shell.css —— 所有游戏共用的外壳样式
+   --------------------------------------------------------------------------
+   约束：本文件只允许使用 .gh- 前缀的类名和 --gh- 前缀的变量。
+   原因：游戏页有自己的排版与配色（2048 是浅色卡片、贪吃蛇是深色画布），
+   共享层一旦写裸元素选择器（button / h1 / a），就会和游戏样式互相踩踏，
+   而这类冲突只有真机上才看得出来，排查成本远高于加一个前缀。
+   ========================================================================== */
+
+:root {
+  --gh-ink: #14161b;
+  --gh-muted: #6b7280;
+  --gh-line: #e3e6ec;
+  --gh-line-strong: #c9cfdb;
+  --gh-surface: #ffffff;
+  --gh-soft: #f1f3f7;
+  --gh-accent: #3b5bfd;
+  --gh-font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --gh-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 顶栏：刻意不做全宽 fixed，而是留在文档流里。
+   游戏页把它放在自己的内容容器第一位，宽度就自然和游戏主体对齐，
+   不需要共享层去猜每个游戏的容器宽度。 */
+#gh-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin: 0 0 16px;
+  font-family: var(--gh-font);
+  font-size: 13px;
+  color: var(--gh-muted);
+}
+
+#gh-bar .gh-spacer { flex: 1 1 auto; }
+
+.gh-link {
+  font-size: 13px;
+  color: var(--gh-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gh-link:hover { color: var(--gh-ink); }
+
+/* 显式写 [hidden]，否则下面的 display 声明会盖掉浏览器默认的 display:none。
+   这个坑已经踩过一次：hidden 属性被作者样式架空，元素照样显示。 */
+.gh-link[hidden],
+.gh-btn[hidden] { display: none; }
+
+.gh-btn {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  padding: 7px 12px;
+  border: 1px solid var(--gh-line);
+  border-radius: 9px;
+  background: var(--gh-surface);
+  color: var(--gh-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .14s ease, background .14s ease;
+}
+
+.gh-btn:hover { border-color: var(--gh-line-strong); }
+
+.gh-btn:focus-visible {
+  outline: 2px solid var(--gh-accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   帮助弹层
+   位置：fixed 覆盖视口。在 iframe 内就是覆盖 iframe 的可视区域，
+   因为 iframe 本身已经是整块内容区，视觉上和全屏一致。
+   -------------------------------------------------------------------------- */
+
+.gh-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(16, 18, 24, .44);
+  font-family: var(--gh-font);
+  animation: gh-fade .16s ease;
+}
+
+.gh-modal[hidden] { display: none; }
+
+.gh-panel {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 26px 28px 30px;
+  background: var(--gh-surface);
+  color: var(--gh-ink);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(16, 18, 24, .3);
+  animation: gh-rise .18s ease;
+}
+
+.gh-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gh-muted);
+  cursor: pointer;
+}
+
+.gh-close:hover { background: var(--gh-soft); color: var(--gh-ink); }
+
+.gh-close:focus-visible {
+  outline: 2px solid var(--gh-accent);
+  outline-offset: 1px;
+}
+
+.gh-kicker {
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--gh-muted);
+  margin-bottom: 10px;
+}
+
+.gh-panel h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  margin: 0 40px 18px 0;
+}
+
+/* 帮助正文由各游戏以语义化 HTML 提供，这里只定排版基调。
+   游戏不需要也不可能改这里的字号——统一观感是共享层存在的理由之一。 */
+.gh-help h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--gh-muted);
+  margin: 22px 0 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gh-line);
+}
+
+.gh-help h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+.gh-help p,
+.gh-help li {
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #2b303b;
+}
+
+.gh-help p { margin: 0 0 10px; }
+
+.gh-help ul,
+.gh-help ol { margin: 0 0 10px; padding-left: 20px; }
+
+.gh-help li { margin-bottom: 5px; }
+
+.gh-help li::marker { color: var(--gh-muted); }
+
+.gh-help strong { font-weight: 600;color:var(--gh-ink); }
+
+.gh-help code {
+  font-family: var(--gh-mono);
+  font-size: 12.5px;
+  background: var(--gh-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.gh-help .gh-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f6f8ff;
+  border-left: 2px solid var(--gh-accent);
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #2b303b;
+}
+
+.gh-help .gh-note strong { color: var(--gh-accent); }
+
+@keyframes gh-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gh-rise {
+  from { opacity: 0; transform: translateY(8px) scale(.99); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-modal, .gh-panel { animation: none; }
+}
+
+@media (max-width: 560px) {
+  .gh-modal { padding: 12px; }
+  .gh-panel { padding: 22px 18px 24px; border-radius: 14px; }
+  .gh-panel h2 { font-size: 17px; }
+}
