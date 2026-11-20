@@ -1,6 +1,6 @@
 # 游戏大厅 · 静态站版
 
-纯静态的网页游戏大厅。没有后端、没有数据库、没有构建步骤：三个 HTML 文件放进任何静态托管就能跑。
+纯静态的网页游戏大厅。没有后端、没有数据库、没有构建步骤：几个 HTML 文件放进任何静态托管就能跑。
 
 - 大厅：`index.html` + `style.css` + `client.js`，靠 `fetch('games.json')` 读游戏清单
 - 游戏：`games/<id>/index.html`，每个游戏一个自包含文件，用 iframe 装进大厅
@@ -16,7 +16,6 @@ game-hub/
 ├── games.json          游戏清单（新游戏只需要改这里）
 ├── .nojekyll           告诉静态托管别用 Jekyll 处理
 └── games/
-    ├── conway/index.html   康威生命游戏
     ├── g2048/index.html    2048
     └── snake/index.html    贪吃蛇
 ```
