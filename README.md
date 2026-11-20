@@ -8,7 +8,7 @@
 
 - 大厅：`index.html` + `style.css` + `client.js`，靠 `fetch('games.json')` 读游戏清单
 - 游戏：`games/<id>/`，每个游戏是能独立打开的页面，用 iframe 装进大厅
-- 共享层：`shared/game-shell.*`，统一顶栏、帮助弹层、存档命名空间
+- 共享层：`shared/game-shell.*` 负责统一顶栏、帮助弹层、存档命名空间；`shared/review-panel.*` 负责复盘面板
 - 文档：`doc/`，架构、开发规范、每个游戏的知识说明
 - 存档：走 `GameShell.store('<id>')`，键名带 `game-hub:` 前缀，游戏之间不会撞车
 
@@ -35,20 +35,44 @@
 
 写这些游戏只有两条硬要求：**规则必须自洽，失败必须可归因**。玩完说不出「我为什么输」，这个游戏就是没做成。
 
+## 复盘面板：四个游戏都有
+
+每局结束时都会出现同一块复盘面板，固定五段——这不是「锦上添花」，是这四个游戏能被叫做教学游戏的唯一理由：
+
+| 段 | 给什么 | 例子（投机采样） |
+| --- | --- | --- |
+| ① 判定 | 一句话告诉你落在哪个区间 | 「加速比小于 1：你比逐 token 生成还慢」 |
+| ② 指标 | 把「用 X 换了 Y」数字化 | 加速比 2.06× / 接受率 71% / 平均接受长度 2.4 |
+| ③ 归因 | 指到具体某一轮、某一题、某一步 | 「最亏的是第 5 轮：猜了 16 个，只推进 1 个」 |
+| ④ 反事实 | 同一套规则，把另一种做法也跑一遍 | k=1~16 全跑一遍，最优 k=4，k=16 掉到 1.33× |
+| ⑤ 建议 | 一条具体动作 | 「这档难度下 k=4 最好，别再往上加」 |
+
+第 ④ 段是重点。前四段只是把分数换个说法，只有对照能让玩家自己得出结论：「原来最优是 k=4，我多猜了 4 倍反而更慢。」
+
+反事实必须是可复现的对照——同一套规则、同一个种子或同一个初始局面，只改一个变量。所以四个游戏的随机数全部走种子 PRNG，不用 `Math.random()`：
+
+- 投机采样：同一难度同一种子，把 k=1/2/4/8/16 各跑一遍整句
+- 上下文窗口：题目和你的答案都不变，只把窗口策略换成「全留原文 / 全压摘要 / 什么都不留」重新判分
+- 2048：同一个开局，换「只会按下→左→右、永不按上」的机械策略重跑
+- 贪吃蛇：同一个开局，换「只朝食物直线走、只在下一步会撞时改向」的机械蛇重跑
+
+这套东西由 `shared/review-panel.js` 统一强制：游戏只提供数据，不写面板的 DOM 和样式。缺了反事实，页面上会直接出现红色告警——不靠自觉，靠机制。
+
 ## 开发文档
 
 | 文档 | 内容 |
 | --- | --- |
-| [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | 四层结构、依赖方向、数据契约、扩展点，以及**哪些东西不能改** |
-| [doc/DEV-GUIDE.md](doc/DEV-GUIDE.md) | 开发规范：文档要求、帮助入口、代码风格、注释、提交前自查清单 |
-| [doc/games/](doc/games/) | 每个游戏的机制说明、玩法学到的内容、规则、代码设计 |
+| [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | 四层结构、依赖方向、数据契约、复盘面板契约，以及**哪些东西不能改** |
+| [doc/DEV-GUIDE.md](doc/DEV-GUIDE.md) | 开发规范：文档要求、帮助入口、复盘要求、代码风格、注释、提交前自查清单 |
+| [doc/games/](doc/games/) | 每个游戏的机制说明、玩法学到的内容、规则、代码设计、复盘面板 |
 
-### 四条硬规则（摘要）
+### 五条硬规则（摘要）
 
-1. **每个游戏必须有配套文档** `doc/games/<id>.md`，四段结构固定。
+1. **每个游戏必须有配套文档** `doc/games/<id>.md`，五段结构固定。
 2. **每个游戏必须有帮助入口**，用 `shared/game-shell.js` 自动注入，不许自己实现。
-3. **关键逻辑必须有关键注释**，代码风格与样式统一。
-4. **必须遵循既有架构，只允许增量扩展**；改动 `shared/` 或 `games.json` 的字段结构需要维护者审核。
+3. **每个游戏必须有复盘面板，且至少一层反事实**，用 `shared/review-panel.js`，不许自己拼 DOM。
+4. **关键逻辑必须有关键注释**，代码风格与样式统一。
+5. **必须遵循既有架构，只允许增量扩展**；改动 `shared/` 或 `games.json` 的字段结构需要维护者审核。
 
 完整版见 [DEV-GUIDE.md](doc/DEV-GUIDE.md)。
 
@@ -64,13 +88,15 @@ game-hub/
 │
 ├── shared/                 ← 所有游戏共用，改动需审核
 │   ├── game-shell.css      顶栏 / 帮助弹层样式（只用 .gh- 前缀）
-│   └── game-shell.js       顶栏注入、帮助弹层、存档封装、Esc 冲突处理
+│   ├── game-shell.js       顶栏注入、帮助弹层、存档封装、Esc 冲突处理
+│   ├── review-panel.css    复盘面板样式（只用 .ghr- 前缀）
+│   └── review-panel.js     复盘面板的五段契约与渲染
 │
 ├── games/                  ← 每个子目录 = 一个能独立打开的游戏
 │   ├── speculative/        投机采样（index.html + game.css + game.js）
 │   ├── context-window/     上下文窗口（+ scenario.js 纯数据）
-│   ├── g2048/index.html    2048
-│   └── snake/index.html    贪吃蛇
+│   ├── g2048/              2048（index.html + game.js）
+│   └── snake/              贪吃蛇（index.html + game.js）
 │
 └── doc/                    ← 文档是交付物的一部分
     ├── ARCHITECTURE.md
@@ -114,9 +140,10 @@ python -m http.server 8123
 完整流程、文件模板、自查清单在 **[doc/DEV-GUIDE.md](doc/DEV-GUIDE.md)**，这里只列最小步骤：
 
 1. 建目录 `games/<新id>/`，三个文件：`index.html`（骨架）、`game.css`、`game.js`。
-2. `index.html` 里必须有 `<header id="gh-bar">` 和 `<div id="gh-help-source" hidden>`，并引入 `shared/game-shell.css` 与 `shared/game-shell.js`——帮助按钮由共享层注入，不要自己写。
-3. 写 `doc/games/<id>.md`（四段：机制 / 能学到什么 / 规则 / 代码设计）。
-4. 在 `games.json` 的 `games` 数组里加一项：
+2. `index.html` 里必须有 `<header id="gh-bar">` 和 `<div id="gh-help-source" hidden>`，并引入 `shared/game-shell.css|js` 与 `shared/review-panel.css|js`——帮助按钮和复盘面板都由共享层提供，不要自己写。
+3. 结束时调 `GameReview.show({ verdict, metrics, attribution, counterfactual, advice })`；反事实必须可复现（同种子 / 同开局，只改一个变量）。
+4. 写 `doc/games/<id>.md`（五段：机制 / 能学到什么 / 规则 / 代码设计 / 复盘面板）。
+5. 在 `games.json` 的 `games` 数组里加一项：
 
 ```json
 {
@@ -132,7 +159,7 @@ python -m http.server 8123
 
 `id` 必须等于目录名（大厅用它拼路径）。`contentCode` 是同一版本号的源码修订计数，改了内容但版本号没变就 +1。
 
-5. 刷新大厅，跑一遍 [自查清单](doc/DEV-GUIDE.md#7-提交前自查清单)。
+6. 刷新大厅，跑一遍 [自查清单](doc/DEV-GUIDE.md#7-提交前自查清单)。
 
 ## 部署到 Gitee Pages
 
