@@ -92,11 +92,21 @@ body {
   word-break: break-word;
 }
 
-.tok { transition: color .18s ease; }
+/* 每个 token 占一个槽位：未生成时是点，生成后变成词。
+   统一 min-width 是为了让占位点均匀铺开，玩家一眼能看出「还有多少个待生成」，
+   否则 39 个点会挤成一小撮，看着像只有十几个。 */
+.sentence .tok {
+  display: inline-block;
+  min-width: 1.15em;
+  text-align: center;
+  transition: color .18s ease;
+}
 
 .tok.done { color: var(--gh-ink); }
 
-.tok.pending { color: #ccd2dd; }
+.tok.pending {
+  color: #c9cfdb;
+}
 
 .tok.fresh { animation: tok-in .22s ease; }
 

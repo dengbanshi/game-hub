@@ -294,7 +294,9 @@ function renderSentence() {
     const done = i < state.pos;
     span.className = 'tok ' + (done ? 'done' : 'pending');
     if (done && i >= state.pos - state.lastAdvance) span.classList.add('fresh');
-    span.textContent = token;
+    // 没生成的位置只画占位点。这里如果用浅灰色直接把 token 写出来，
+    // 玩家开局就能读到整句答案，整个游戏就没有悬念了。
+    span.textContent = done ? token : '·';
     frag.append(span);
   });
   el.sentence.replaceChildren(frag);
