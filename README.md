@@ -84,7 +84,39 @@ https://<你的用户名>.gitee.io/game-hub/
 - **更新有延迟**。审核 + 缓存，几分钟内看到旧页面是正常的，先清缓存再用隐身窗口确认。
 - **没有 Pages 入口**。部分账号/仓库暂时开不了，不是你操作错了。换台平台更省时间，代码不用改。
 
+## 部署到 GitHub Pages（推荐）
+
+这个站没有构建步骤，所以直接用「从分支部署」，不需要写 Actions：
+
+1. 在 GitHub 新建仓库 `game-hub`。选 Public，**不要**勾选初始化 README / .gitignore（本地已经提交好了）。
+2. 本地推送：
+
+```bash
+cd game-hub
+git remote add origin https://github.com/<你的用户名>/game-hub.git
+git push -u origin main
+```
+
+3. 仓库 → Settings → Pages → Build and deployment：
+   - Source 选 `Deploy from a branch`
+   - 分支选 `main`，目录选 `/ (root)`
+   - 点 Save
+4. 等 30 秒到几分钟，访问：
+
+```
+https://<你的用户名>.github.io/game-hub/
+```
+
+几个要点：
+
+- 根目录的 `.nojekyll` 让 Jekyll 不参与处理，下划线开头的文件也不会被吞掉。
+- 推送后自动重新发布，不用手动点「更新」；但有约 10 分钟的 CDN 缓存，刚改完看不到变化先清缓存。
+- 项目页地址带 `/game-hub/` 前缀，所以资源只能用相对路径。
+- 以后如果想把源码和产物分到两个分支（像参考项目那样用 `gh-pages`），改成 GitHub Actions 的 `actions/upload-pages-artifact` + `actions/deploy-pages` 流程即可。
+- 国内访问 GitHub Pages 时快时慢，这是线路问题不是配置问题；要稳定就用下面的国内平台。
+
 ## 其他平台（同一套文件，零改动）
+
 
 | 平台 | 特点 | 适合 |
 | --- | --- | --- |
