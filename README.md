@@ -39,12 +39,29 @@ game-hub/
 ├── index.html          大厅入口
 ├── style.css           大厅样式
 ├── client.js           读清单、渲染卡片、iframe 开关
-├── games.json          游戏清单（新游戏只需要改这里）
+├── games.json          分类 + 游戏清单（新游戏只需要改这里）
 ├── .nojekyll           告诉静态托管别用 Jekyll 处理
 └── games/
     ├── g2048/index.html    2048
     └── snake/index.html    贪吃蛇
 ```
+
+## 分类
+
+大厅顶部按分类筛选，目前是 `Agent` / `大模型推理` / `游戏`，`全部` 是内置的，不用写进清单。分类声明在 `games.json` 的 `categories` 里，顺序即标签顺序：
+
+```json
+"categories": [
+  { "id": "agent", "name": "Agent" },
+  { "id": "inference", "name": "大模型推理" },
+  { "id": "game", "name": "游戏" }
+]
+```
+
+- 每个游戏用 `category` 字段挂到某个 `id` 上；没写 `category` 的游戏只出现在「全部」里。
+- 挂了一个没声明的 `category`，大厅会自动补一个同名标签，不会让游戏凭空消失。
+- 标签后面那个数字是当前分类下的游戏数，减到 0 就显示「正在做」——空分类不该藏起来，它本身就是进度条。
+- 支持直达链接：`#agent`、`#inference`、`#game`。
 
 ## 本地预览
 
@@ -69,6 +86,7 @@ python -m http.server 8123
 {
   "id": "your-game",
   "name": "显示名",
+  "category": "inference",
   "version": "1.0.0",
   "contentCode": 1,
   "entry": "index.html"

@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 const lobby = $('lobby');
+const tabsEl = $('tabs');
 const gridEl = $('games');
 const statusEl = $('status');
 const emptyEl = $('empty');
@@ -11,8 +12,11 @@ const titleEl = $('title');
 const newtab = $('newtab');
 
 const PALETTE = ['#3b5bfd', '#0f766e', '#b45309', '#7c3aed', '#be123c', '#0369a1'];
+const ALL = { id: 'all', name: '全部' };
 
 let games = [];
+let categories = [];
+let active = 'all';
 
 function colorOf(id) {
   let h = 0;
@@ -20,12 +24,21 @@ function colorOf(id) {
   return PALETTE[h % PALETTE.length];
 }
 
+function countOf(categoryId) {
+  if (categoryId === 'all') return games.length;
+  return games.filter((g) => g.category === categoryId).length;
+}
+
+function categoryName(categoryId) {
+  const found = categories.find((c) => c.id === categoryId);
+  return found ? found.name : categoryId;
+}
+
 function makeCard(g) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'card';
   btn.setAttribute('aria-label', '打开 ' + g.name);
-  btn.style.setProperty('--card-accent', colorOf(g.id));
 
   const avatar = document.createElement('span');
   avatar.className = 'avatar';
@@ -38,26 +51,75 @@ function makeCard(g) {
 
   const meta = document.createElement('span');
   meta.className = 'meta';
-  meta.textContent = `v${g.version} · 资源 #${g.contentCode}`;
+  const tag = g.category ? categoryName(g.category) : '';
+  meta.textContent = (tag ? tag + ' · ' : '') + `v${g.version} · 资源 #${g.contentCode}`;
 
   btn.append(avatar, name, meta);
   btn.addEventListener('click', () => openGame(g));
   return btn;
 }
 
+function renderTabs() {
+  const list = [ALL, ...categories];
+  tabsEl.replaceChildren(
+    ...list.map((cat) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab' + (cat.id === active ? ' is-active' : '');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(cat.id === active));
+      btn.dataset.id = cat.id;
+
+      const label = document.createElement('span');
+      label.textContent = cat.name;
+      const count = document.createElement('span');
+      count.className = 'n';
+      count.textContent = String(countOf(cat.id));
+
+      btn.append(label, count);
+      btn.addEventListener('click', () => select(cat.id));
+      return btn;
+    })
+  );
+}
+
+function select(categoryId) {
+  const known = [ALL, ...categories].some((c) => c.id === categoryId);
+  if (!known) return;
+
+  active = categoryId;
+
+  const nextHash = categoryId === 'all' ? '' : '#' + categoryId;
+  const currentHash = location.hash;
+  if (currentHash !== nextHash) {
+    history.replaceState(null, '', nextHash || location.pathname + location.search);
+  }
+
+  renderTabs();
+  render();
+}
+
 function render() {
   const q = searchEl.value.trim().toLocaleLowerCase();
-  const list = games.filter((g) =>
-    g.name.toLocaleLowerCase().includes(q) || g.id.includes(q)
+  const list = games.filter(
+    (g) =>
+      (active === 'all' || g.category === active) &&
+      (g.name.toLocaleLowerCase().includes(q) || g.id.includes(q))
   );
+
   gridEl.replaceChildren(...list.map(makeCard));
+
+  const total = countOf(active);
   emptyEl.hidden = list.length > 0;
-  if (list.length === 0 && games.length > 0) {
-    emptyEl.textContent = '没有找到匹配的游戏。';
+  if (!list.length) {
+    if (!games.length) emptyEl.textContent = '游戏清单是空的。';
+    else if (q) emptyEl.textContent = '没有找到匹配的游戏。';
+    else emptyEl.textContent = `${categoryName(active)} 分类还没有游戏，正在做。`;
   }
-  statusEl.textContent = games.length
-    ? q ? `${list.length} / ${games.length} 个游戏` : `${games.length} 个游戏`
-    : statusEl.textContent;
+
+  statusEl.textContent = q && list.length !== total
+    ? `${list.length} / ${total} 个游戏`
+    : `${total} 个游戏`;
 }
 
 function openGame(g) {
@@ -87,14 +149,38 @@ document.addEventListener('keydown', (event) => {
 
 searchEl.addEventListener('input', render);
 
+window.addEventListener('hashchange', () => {
+  const id = location.hash.replace('#', '') || 'all';
+  if (id !== active && [ALL, ...categories].some((c) => c.id === id)) {
+    active = id;
+    renderTabs();
+    render();
+  }
+});
+
 async function boot() {
   try {
     const res = await fetch('./games.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+
     games = Array.isArray(data.games) ? data.games : [];
+    categories = Array.isArray(data.categories) ? data.categories : [];
+
+    const declared = new Set(categories.map((c) => c.id));
+    for (const g of games) {
+      if (g.category && !declared.has(g.category)) {
+        declared.add(g.category);
+        categories.push({ id: g.category, name: g.category });
+      }
+    }
+
     if (!games.length) throw new Error('清单里没有游戏');
-    statusEl.textContent = `${games.length} 个游戏`;
+
+    const fromHash = location.hash.replace('#', '');
+    if (fromHash && [ALL, ...categories].some((c) => c.id === fromHash)) active = fromHash;
+
+    renderTabs();
     render();
   } catch (error) {
     statusEl.textContent = '读取清单失败：' + error.message;

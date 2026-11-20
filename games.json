@@ -1,9 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "categories": [
+    { "id": "agent", "name": "Agent" },
+    { "id": "inference", "name": "大模型推理" },
+    { "id": "game", "name": "游戏" }
+  ],
   "games": [
     {
       "id": "g2048",
       "name": "2048",
+      "category": "game",
       "version": "1.0.0",
       "contentCode": 1,
       "entry": "index.html"
@@ -11,6 +17,7 @@
     {
       "id": "snake",
       "name": "贪吃蛇",
+      "category": "game",
       "version": "1.0.0",
       "contentCode": 1,
       "entry": "index.html"
