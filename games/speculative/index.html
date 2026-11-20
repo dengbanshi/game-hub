@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>投机采样</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b5bfd'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/game-shell.css">
+<link rel="stylesheet" href="./game.css">
+</head>
+<body>
+
+<header id="gh-bar" data-title="投机采样"></header>
+
+<main class="wrap">
+  <div class="intro">
+    <h1>投机采样<span class="sub">猜词接力</span></h1>
+    <p>小模型先猜一串，大模型一次验收。你的唯一决策是——每轮让它猜几个。</p>
+  </div>
+
+  <!-- 目标句子：已生成的部分显示文字，未生成的是占位点 -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="label">目标句子</span>
+      <span class="meta" id="progress">0 / 39</span>
+    </div>
+    <p class="sentence" id="sentence"></p>
+  </section>
+
+  <section class="panel">
+    <div class="field">
+      <span class="label">每轮猜几个（k）</span>
+      <div class="chips" id="ks" role="group" aria-label="每轮猜测长度"></div>
+      <span class="field-note" id="knote"></span>
+    </div>
+
+    <div class="field">
+      <span class="label">draft 与 target 的差距</span>
+      <div class="chips" id="levels" role="group" aria-label="draft 与 target 的分布差距"></div>
+      <span class="field-note" id="levelnote"></span>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="run" type="button">验证一轮</button>
+      <button class="btn" id="reset" type="button">重开</button>
+      <span class="status" id="status" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <!-- 本轮验收轨道：每一步的 p_draft / p_target / ratio / u 都摊开，
+       玩家能指着某一行说「就是这里被拒的」，而不是只看到一个总分 -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="label">本轮验收</span>
+      <span class="meta" id="tracknote"></span>
+    </div>
+    <div class="track" id="track">
+      <p class="empty">选好 k，点「验证一轮」。每一步的概率都会摊开给你看。</p>
+    </div>
+  </section>
+
+  <section class="panel stats" aria-label="累计统计">
+    <div class="stat"><span>轮数</span><b id="st-rounds">0</b></div>
+    <div class="stat"><span>已推进</span><b id="st-tokens">0</b></div>
+    <div class="stat"><span>累计耗时</span><b id="st-time">0.0</b></div>
+    <div class="stat strong"><span>加速比</span><b id="st-speed">—</b></div>
+  </section>
+
+  <section class="panel review" id="review" hidden>
+    <div class="review-head">
+      <span class="label">复盘</span>
+      <span class="meta" id="review-level"></span>
+    </div>
+    <p class="verdict" id="verdict"></p>
+    <div class="stats stats-plain">
+      <div class="stat"><span>最终加速比</span><b id="rv-speed">—</b></div>
+      <div class="stat"><span>总耗时</span><b id="rv-time">—</b></div>
+      <div class="stat"><span>接受率</span><b id="rv-accept">—</b></div>
+      <div class="stat"><span>平均接受长度</span><b id="rv-mean">—</b></div>
+    </div>
+    <div class="table-wrap">
+      <table class="rounds">
+        <thead>
+          <tr><th>轮</th><th>k</th><th>接受</th><th>推进</th><th>本轮耗时</th><th>累计加速比</th></tr>
+        </thead>
+        <tbody id="rounds-body"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="review-hint"></p>
+    <div class="kcurve" id="kcurve" aria-label="不同 k 的加速比对照"></div>
+  </section>
+</main>
+
+<!-- 帮助内容：给共享壳的弹层读取。改动时同步 doc/games/speculative.md。 -->
+<div id="gh-help-source" hidden>
+  <h3>这是什么机制</h3>
+  <p>自回归解码是<strong>串行</strong>的：每生成一个 token，都要跑一次完整的前向。GPU 在这个过程里其实很闲——它在等显存把权重搬过来，算力大量空转。</p>
+  <p>投机采样的思路是：让一个便宜的小模型（draft）先连续猜 k 个 token，再让大模型（target）<strong>一次前向并行验证这 k 个位置</strong>。从第一个猜错的地方截断，前面猜对的部分直接采信，被拒的位置由 target 自己重新采一个。</p>
+  <p>关键性质：它的输出分布和「target 单独逐 token 解码」<strong>完全一致</strong>。因为拒绝时不是简单丢弃，而是从残差分布 <code>max(0, p_target − p_draft)</code> 里重新采样。所以这是精确加速，不是拿质量换速度。</p>
+
+  <h3>你能学到什么</h3>
+  <ul>
+    <li>你会看到 <strong>k 不是越大越好</strong>。第一反应都是「猜长一点更快」，玩两局你会发现最优点在 2~4。</li>
+    <li>你会看到<strong>接受率决定一切</strong>：每多猜一位，命中概率是乘起来的，k 越大，后面几位越是纯浪费。</li>
+    <li>你会亲手把 draft 和 target 的差距调大，然后发现最优 k 直接塌到 1——这就是为什么实践中 draft 模型必须和 target 同源、同词表。</li>
+    <li>你会明白<strong>拒绝的代价是时间，不是质量</strong>：被拒之后 target 重采样，出来的仍然是那个正确的词。</li>
+  </ul>
+
+  <h3>玩法规则</h3>
+  <ol>
+    <li>选一个难度（决定 draft 有多像 target），再选每轮猜测长度 k。</li>
+    <li>点「验证一轮」：draft 沿着自己的分布连猜 k 个 token，target 逐个判定接受或拒绝。</li>
+    <li>判定规则：<code>接受概率 = min(1, p_target / p_draft)</code>，比较对象是一个固定的随机数 u。被拒即截断，该位置由 target 重采样一个词。</li>
+    <li>一轮至少推进 1 个 token，直到整句 39 个 token 生成完毕。</li>
+  </ol>
+
+  <h3>算分方式</h3>
+  <ul>
+    <li>基线：逐 token 解码，39 个 token 耗时 39 个单位。</li>
+    <li>验证一轮的耗时 = <code>1 + 0.05k + 0.004k²</code>。前两项是「并行验证 k+1 个位置的线性开销」，平方项是长序列下 attention 与 kernel 效率下降的近似。</li>
+    <li><strong>加速比 = 39 ÷ 总耗时</strong>。小于 1 表示你比老老实实逐 token 生成还慢。</li>
+  </ul>
+
+  <h3>想深一点</h3>
+  <p>如果 draft 和 target 完全一样，k 应该取多大？如果 draft 完全是随机的，k 又该取多大？想清楚这两个极端，你就知道线上系统为什么要按场景动态调 k，而不是设一个固定值。</p>
+</div>
+
+<script src="../../shared/game-shell.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>

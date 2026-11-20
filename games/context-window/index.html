@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>上下文窗口</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='15' font-weight='600' fill='%23fff' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../shared/game-shell.css">
+<link rel="stylesheet" href="./game.css">
+</head>
+<body>
+
+<header id="gh-bar" data-title="上下文窗口"></header>
+
+<main class="wrap">
+  <div class="intro">
+    <h1>上下文窗口<span class="sub">记忆背包</span></h1>
+    <p id="brief"></p>
+  </div>
+
+  <!-- 预算可视化：每个小方块 = 1 格上下文。条子被填满时，你必须做取舍。 -->
+  <section class="panel">
+    <div class="panel-head">
+      <span class="label">上下文预算</span>
+      <span class="meta" id="budgetText">0 / 24 格</span>
+    </div>
+    <div class="cells" id="cells"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="label">窗口里现在有什么</span>
+      <span class="meta" id="windowNote"></span>
+    </div>
+    <div class="win-list" id="windowList"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="label" id="stageLabel">本轮信息</span>
+      <span class="meta" id="stageMeta"></span>
+    </div>
+    <div class="stage" id="stage"></div>
+    <div class="actions">
+      <button class="btn primary" id="next" type="button" disabled>进入下一轮</button>
+      <button class="btn" id="reset" type="button">重开</button>
+      <span class="status" id="status" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section class="panel review" id="review" hidden>
+    <div class="panel-head">
+      <span class="label">复盘</span>
+      <span class="meta" id="review-meta"></span>
+    </div>
+    <p class="verdict" id="verdict"></p>
+    <div class="metrics">
+      <div class="metric"><span>得分</span><b id="m-score">0</b></div>
+      <div class="metric"><span>预算峰值占用</span><b id="m-usage">0%</b></div>
+      <div class="metric"><span>噪音占窗口</span><b id="m-noise">0%</b></div>
+      <div class="metric"><span>关键证据丢失</span><b id="m-lost">0</b></div>
+    </div>
+    <div class="detail-list" id="detailList"></div>
+    <p class="hint" id="review-hint"></p>
+  </section>
+</main>
+
+<!-- 帮助内容：给共享壳的弹层读取。改动时同步 doc/games/context-window.md。 -->
+<div id="gh-help-source" hidden>
+  <h3>这是什么机制</h3>
+  <p>模型的上下文窗口是硬约束：一次能看的 token 有上限。更麻烦的是，就算没超限，<strong>中间位置的信息也容易被忽略</strong>——把一切塞进 prompt，从来不是「保险」的做法。</p>
+  <p>多轮 Agent 任务里，历史会不断堆积。你必须在每一步决定：这条留<b>原文</b>、压成<b>摘要</b>、还是直接<b>丢掉</b>。这三种操作对应真实系统的三种手段：保留原始消息、做摘要或抽取、以及驱逐（evict）。</p>
+  <p>关键在于：<strong>压缩是有损的</strong>。摘要能留住「有这件事」，但会丢掉具体数字。而排障恰恰是数字决定结论的场景。</p>
+
+  <h3>你能学到什么</h3>
+  <ul>
+    <li>你会看到<strong>占位最大的信息往往最没用</strong>：一顿午饭的讨论占 8 格，一段关键日志占 6 格——但只有后者能定根因。</li>
+    <li>你会亲手体会<strong>压缩的代价是延迟结算的</strong>：压缩的那一刻很划算，等到提问时才发现数字没了。</li>
+    <li>你会看到<strong>噪音会挤掉证据</strong>：预算就那么多，留下的每格闲聊都等于从证据里扣掉一格。</li>
+    <li>你会明白为什么成熟的 Agent 要配<strong>外部记忆 + 检索</strong>：不是把一切塞进 prompt，而是需要时再去取。</li>
+  </ul>
+
+  <h3>玩法规则</h3>
+  <ol>
+    <li>预算是 24 格，信息分 4 轮进来，每轮 2~3 条。</li>
+    <li>每条信息三选一：<b>保留原文</b>（占满 size 格）、<b>压缩</b>（占 <code>⌈size/3⌉</code> 格，丢失细节）、<b>丢弃</b>（不占格）。</li>
+    <li>预算不足时无法加入新内容，必须先压缩或移除窗口里已有的条目。</li>
+    <li>过程中和结尾共 3 道题，答案需要窗口里的证据支撑。</li>
+  </ol>
+
+  <h3>算分方式</h3>
+  <ul>
+    <li>每题 20 分，满分 60。</li>
+    <li><b>答对且证据完整</b> = 20 分（有据可依）；<b>答对但证据缺失</b> = 10 分（蒙对）；<b>答错</b> = 0 分。</li>
+    <li>复盘会给出预算峰值占用、噪音占比、关键证据丢失数——分数相同但指标不同，说明你的策略不同。</li>
+  </ul>
+
+  <h3>想深一点</h3>
+  <p>试试两个极端：全部保留原文，和全部压缩成摘要。你会发现两边都拿不到满分——一个被预算卡死，一个被细节缺失卡死。中间那条线，就是你真正要设计的上下文策略。</p>
+</div>
+
+<script src="../../shared/game-shell.js"></script>
+<script src="./scenario.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>

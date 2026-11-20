@@ -7,43 +7,75 @@
 技术上它就是个纯静态站点——没有后端、没有数据库、没有构建步骤，几个 HTML 文件放进任何静态托管就能跑。之所以这么朴素，是为了让「加一个新游戏」的成本低到你可以随手把刚想明白的一个机制做成能玩的东西。
 
 - 大厅：`index.html` + `style.css` + `client.js`，靠 `fetch('games.json')` 读游戏清单
-- 游戏：`games/<id>/index.html`，每个游戏一个自包含文件，用 iframe 装进大厅
-- 存档：各游戏自己写 `localStorage`，键名统一带 `game-hub-` 前缀，方便以后迁移
+- 游戏：`games/<id>/`，每个游戏是能独立打开的页面，用 iframe 装进大厅
+- 共享层：`shared/game-shell.*`，统一顶栏、帮助弹层、存档命名空间
+- 文档：`doc/`，架构、开发规范、每个游戏的知识说明
+- 存档：走 `GameShell.store('<id>')`，键名带 `game-hub:` 前缀，游戏之间不会撞车
 
-## 现有游戏
+## 游戏
 
-目前两个是热身，作用是把大厅、清单、iframe、存档这条链路跑通，同时确认「游戏本身得好玩」这件事不能省——一个不好玩的游戏，讲不清任何道理。
-
-| 游戏 | 玩的是什么 | 和推理 / Agent 的关系 |
+| 游戏 | 分类 | 讲清什么 |
 | --- | --- | --- |
-| 2048 | 固定规则 + 有限动作，每一步都在收窄状态空间 | 热身：体会「推理 = 在状态空间里一步步搜索」 |
-| 贪吃蛇 | 每帧读状态、给动作、承担后果的实时循环 | 热身：Agent 的 loop 最小原型 |
+| **投机采样** | 大模型推理 | 猜得越长不一定越快。接受率按位相乘，验证成本照付，最优 k 会随 draft 与 target 的差距塌下来 |
+| **上下文窗口** | Agent | 24 格预算下留原文 / 压缩 / 丢弃的取舍，以及压缩的代价为什么要到提问时才结算 |
+| 2048 | 游戏 | 热身：状态空间搜索，以及启发式剪枝能省掉多少分支 |
+| 贪吃蛇 | 游戏 | 热身：Agent 循环的最小原型，动作延迟为什么会出事 |
 
-## 计划中的游戏（一个游戏讲清一个机制）
+前两个是这一版的重点，各自配了完整文档（`doc/games/`），游戏内也内置了「? 玩法与原理」入口。
+后两个是热身：它们不直接讲推理机制，作用是把大厅、清单、iframe、帮助弹层这条链路跑通，同时确认「游戏本身得好玩」这件事不能省——一个不好玩的游戏，讲不清任何道理。
+
+## 计划中的游戏
 
 | 知识点 | 玩法设想 |
 | --- | --- |
 | KV Cache | 两条路径赛跑：每次重算 vs 复用缓存，直观感受「显存换时间」 |
 | 批处理与调度 | 请求排队进场，你在吞吐和首字延迟之间做取舍 |
-| 投机采样 | 小模型先猜一串、大模型验收，猜对加速、猜错回退 |
-| 上下文窗口 | 记忆有限，必须决定留住哪段、丢掉哪段才能通关 |
 | 工具调用 | 拼装调用链，用有限工具达成目标，错一步全盘重来 |
 | ReAct / Agent 循环 | 观察-思考-行动，限定步数通关，看你会不会掉进死循环 |
 
 写这些游戏只有两条硬要求：**规则必须自洽，失败必须可归因**。玩完说不出「我为什么输」，这个游戏就是没做成。
 
+## 开发文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | 四层结构、依赖方向、数据契约、扩展点，以及**哪些东西不能改** |
+| [doc/DEV-GUIDE.md](doc/DEV-GUIDE.md) | 开发规范：文档要求、帮助入口、代码风格、注释、提交前自查清单 |
+| [doc/games/](doc/games/) | 每个游戏的机制说明、玩法学到的内容、规则、代码设计 |
+
+### 四条硬规则（摘要）
+
+1. **每个游戏必须有配套文档** `doc/games/<id>.md`，四段结构固定。
+2. **每个游戏必须有帮助入口**，用 `shared/game-shell.js` 自动注入，不许自己实现。
+3. **关键逻辑必须有关键注释**，代码风格与样式统一。
+4. **必须遵循既有架构，只允许增量扩展**；改动 `shared/` 或 `games.json` 的字段结构需要维护者审核。
+
+完整版见 [DEV-GUIDE.md](doc/DEV-GUIDE.md)。
+
 ## 目录结构
 
 ```
 game-hub/
-├── index.html          大厅入口
-├── style.css           大厅样式
-├── client.js           读清单、渲染卡片、iframe 开关
-├── games.json          分类 + 游戏清单（新游戏只需要改这里）
-├── .nojekyll           告诉静态托管别用 Jekyll 处理
-└── games/
-    ├── g2048/index.html    2048
-    └── snake/index.html    贪吃蛇
+├── index.html              大厅入口
+├── style.css               大厅样式（不含任何游戏样式）
+├── client.js               清单读取、分类筛选、iframe 开关、覆盖层消息
+├── games.json              分类 + 游戏清单（唯一的数据入口）
+├── .nojekyll               告诉静态托管别用 Jekyll 处理
+│
+├── shared/                 ← 所有游戏共用，改动需审核
+│   ├── game-shell.css      顶栏 / 帮助弹层样式（只用 .gh- 前缀）
+│   └── game-shell.js       顶栏注入、帮助弹层、存档封装、Esc 冲突处理
+│
+├── games/                  ← 每个子目录 = 一个能独立打开的游戏
+│   ├── speculative/        投机采样（index.html + game.css + game.js）
+│   ├── context-window/     上下文窗口（+ scenario.js 纯数据）
+│   ├── g2048/index.html    2048
+│   └── snake/index.html    贪吃蛇
+│
+└── doc/                    ← 文档是交付物的一部分
+    ├── ARCHITECTURE.md
+    ├── DEV-GUIDE.md
+    └── games/{speculative,context-window,g2048,snake}.md
 ```
 
 ## 分类
@@ -75,12 +107,16 @@ python -m http.server 8123
 
 或者 `npx serve .`。
 
-## 加一个新游戏（三步）
+## 加一个新游戏
 
 加之前先回答一个问题：这个游戏要讲清哪个机制？想不清楚就先别写代码，否则做出来的只是个能点的小玩具。
 
-1. 新建 `games/<新id>/index.html`，写完直接能跑（想返回大厅就放一个 `<a href="../../index.html">`）。
-2. 在 `games.json` 的 `games` 数组里加一项：
+完整流程、文件模板、自查清单在 **[doc/DEV-GUIDE.md](doc/DEV-GUIDE.md)**，这里只列最小步骤：
+
+1. 建目录 `games/<新id>/`，三个文件：`index.html`（骨架）、`game.css`、`game.js`。
+2. `index.html` 里必须有 `<header id="gh-bar">` 和 `<div id="gh-help-source" hidden>`，并引入 `shared/game-shell.css` 与 `shared/game-shell.js`——帮助按钮由共享层注入，不要自己写。
+3. 写 `doc/games/<id>.md`（四段：机制 / 能学到什么 / 规则 / 代码设计）。
+4. 在 `games.json` 的 `games` 数组里加一项：
 
 ```json
 {
@@ -89,11 +125,14 @@ python -m http.server 8123
   "category": "inference",
   "version": "1.0.0",
   "contentCode": 1,
-  "entry": "index.html"
+  "entry": "index.html",
+  "doc": "doc/games/your-game.md"
 }
 ```
 
-3. 刷新大厅。`contentCode` 是同一版本号的源码修订计数，改了内容但版本号没变就 +1（照抄参考站点的做法，方便区分缓存）。
+`id` 必须等于目录名（大厅用它拼路径）。`contentCode` 是同一版本号的源码修订计数，改了内容但版本号没变就 +1。
+
+5. 刷新大厅，跑一遍 [自查清单](doc/DEV-GUIDE.md#7-提交前自查清单)。
 
 ## 部署到 Gitee Pages
 

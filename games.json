@@ -1,5 +1,6 @@
 {
   "schemaVersion": 2,
+  "repo": "dengbanshi/game-hub",
   "categories": [
     { "id": "agent", "name": "Agent" },
     { "id": "inference", "name": "大模型推理" },
@@ -7,20 +8,40 @@
   ],
   "games": [
     {
+      "id": "speculative",
+      "name": "投机采样",
+      "category": "inference",
+      "version": "1.0.0",
+      "contentCode": 1,
+      "entry": "index.html",
+      "doc": "doc/games/speculative.md"
+    },
+    {
+      "id": "context-window",
+      "name": "上下文窗口",
+      "category": "agent",
+      "version": "1.0.0",
+      "contentCode": 1,
+      "entry": "index.html",
+      "doc": "doc/games/context-window.md"
+    },
+    {
       "id": "g2048",
       "name": "2048",
       "category": "game",
       "version": "1.0.0",
-      "contentCode": 1,
-      "entry": "index.html"
+      "contentCode": 2,
+      "entry": "index.html",
+      "doc": "doc/games/g2048.md"
     },
     {
       "id": "snake",
       "name": "贪吃蛇",
       "category": "game",
       "version": "1.0.0",
-      "contentCode": 1,
-      "entry": "index.html"
+      "contentCode": 2,
+      "entry": "index.html",
+      "doc": "doc/games/snake.md"
     }
   ]
 }
