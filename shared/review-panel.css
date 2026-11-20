@@ -1,0 +1,257 @@
+/* ==========================================================================
+   review-panel.css —— 所有游戏共用的复盘面板样式
+   --------------------------------------------------------------------------
+   约束与 game-shell.css 相同：只用 .ghr- 前缀的类名，不写裸元素选择器。
+   基线色一律取共享层的 --gh-* 变量，所以四个游戏（白底）观感一致。
+
+   为什么不把样式留给各游戏自己写：复盘面板的价值在于「结构恒定」——
+   玩家在四个游戏里看到的都是同五个部分、同一个顺序。样式一旦各写一份，
+   第一次改动就会有人少写一个区块，结构一致性立刻失效。
+   ========================================================================== */
+
+.ghr-panel {
+  margin: 0 0 12px;
+  padding: 18px 20px 20px;
+  background: #fff;
+  border: 1px solid var(--gh-line);
+  border-radius: 14px;
+  font-family: var(--gh-font);
+  color: var(--gh-ink);
+  animation: ghr-in .22s ease;
+}
+
+.ghr-panel[hidden] { display: none; }
+
+@keyframes ghr-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghr-panel { animation: none; }
+}
+
+/* ------------------------------------------------------------------ 面板头 */
+
+.ghr-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ghr-title {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gh-muted);
+}
+
+.ghr-meta {
+  font-size: 12px;
+  color: var(--gh-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------- ① 判定（一句话） */
+
+.ghr-verdict {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.78;
+}
+
+/* ------------------------------------------------------------ ② 指标 */
+
+.ghr-metrics {
+  display: grid;
+  /* 用 minmax 而不是固定 4 列：2048 / 贪吃蛇的容器只有 430~520px，
+     固定 4 列会把「无效按键」这种四个字挤成两行，还会剩一个孤零零的格子在第二行。
+     150px 这个下限让窄容器自动排成 2×2，宽容器（760px）仍然是 4 列。 */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--gh-line);
+}
+
+.ghr-metric span {
+  display: block;
+  font-size: 11px;
+  color: var(--gh-muted);
+  letter-spacing: .04em;
+  margin-bottom: 3px;
+}
+
+.ghr-metric b {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ghr-metric.is-strong b { color: var(--gh-accent); }
+
+/* --------------------------------------------- ③④ 小节（归因 / 反事实） */
+
+.ghr-section { margin-top: 16px; }
+
+.ghr-label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gh-muted);
+}
+
+.ghr-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--gh-muted);
+}
+
+/* 归因：表格形态（逐轮明细） */
+.ghr-table-wrap { overflow-x: auto; }
+
+.ghr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ghr-table th {
+  text-align: right;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--gh-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--gh-line);
+  white-space: nowrap;
+}
+
+.ghr-table td {
+  text-align: right;
+  padding: 6px 8px;
+  border-bottom: 1px solid #f0f2f6;
+  color: #2b303b;
+}
+
+.ghr-table th:first-child,
+.ghr-table td:first-child { text-align: left; }
+
+.ghr-table tr.is-best td { color: #0f766e; font-weight: 500; }
+
+/* 归因：清单形态（逐题 / 逐条判定） */
+.ghr-list { display: flex; flex-direction: column; gap: 6px; }
+
+.ghr-item {
+  display: flex;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #3c4354;
+}
+
+.ghr-item .ghr-mark {
+  flex: 0 0 16px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.ghr-item.is-good .ghr-mark { color: #0f766e; }
+.ghr-item.is-warn .ghr-mark { color: #a2670d; }
+.ghr-item.is-bad .ghr-mark { color: #be123c; }
+.ghr-item.is-none .ghr-mark { color: var(--gh-muted); }
+
+/* ------------------------------------------- ④ 反事实：条形对照 */
+
+.ghr-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ghr-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gh-muted);
+}
+
+.ghr-bar-label {
+  flex: 0 0 auto;
+  min-width: 92px;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ghr-bar-track {
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 999px;
+  background: #f0f2f6;
+  overflow: hidden;
+}
+
+.ghr-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #c3ccdd;
+  transition: width .3s ease;
+}
+
+.ghr-bar-value {
+  flex: 0 0 54px;
+  text-align: right;
+}
+
+.ghr-bar-row.is-best { color: var(--gh-ink); font-weight: 500; }
+.ghr-bar-row.is-best .ghr-bar-track i { background: #0f766e; }
+.ghr-bar-row.is-best .ghr-bar-value { color: #0f766e; }
+
+/* 玩家自己那一档单独标色：反事实的意义是「和你比」，不是「谁最高」 */
+.ghr-bar-row.is-mine .ghr-bar-label { color: var(--gh-ink); font-weight: 500; }
+.ghr-bar-row.is-mine .ghr-bar-track i { background: var(--gh-accent); }
+.ghr-bar-row.is-mine .ghr-bar-value { color: var(--gh-accent); }
+
+/* 两者同时成立（你选的正好是最优）时，以「你的」为准，避免两条蓝绿打架 */
+.ghr-bar-row.is-mine.is-best .ghr-bar-track i { background: #0f766e; }
+
+/* ------------------------------------------------------------ ⑤ 建议 */
+
+.ghr-advice {
+  margin: 16px 0 0;
+  padding: 11px 13px;
+  background: #f7f8fb;
+  border-radius: 9px;
+  font-size: 12.5px;
+  line-height: 1.78;
+  color: var(--gh-muted);
+}
+
+/* 契约缺项时的显式告警。刻意做成可见的：
+   规范要求「至少一层反事实」，缺了就该在页面上被看见，而不是只躺在控制台里。 */
+.ghr-missing {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed #f09595;
+  border-radius: 9px;
+  background: #fcebeb;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #a32d2d;
+}
+
+@media (max-width: 560px) {
+  .ghr-panel { padding: 14px; }
+  .ghr-bar-label { min-width: 72px; }
+}
